@@ -9,9 +9,9 @@ async function fetchBalance(id) {
     return userBalance;
 }
 
-for (index = 0; index < 10; index += 1) {
+for (i = 0; i < 10; i += 1) {
 // for (i = 000000000000000000; i < 1000000000000000000; i++) {
-    fetchBalance(index).then(res => {
-        console.log(index, res);
+    fetchBalance(i).then(res => {
+        console.log(i, res);
     });
 }

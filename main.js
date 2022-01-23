@@ -160,7 +160,22 @@ client.on("messageCreate", async (message) => {
         if (BigNumber(userBalance.balance).isLessThan(BigNumber(unitsToRaw(payAmount)))) return message.reply("You don't have enough Banano to do that.");
         const txHash = await sendBan(housePublicKey, unitsToRaw(payAmount), message.author.id);
         await receivePending(0);
-        message.reply(`Donated **${Math.floor(payAmount * 1e2) / 1e2} BAN** to the house: \`-${Math.floor(payAmount * 1e2) / 1e2} BAN (${txHash})\``);
+        message.reply(`Donated **${Math.floor(payAmount * 1e2) / 1e2} BAN** to the house.\n\`-${Math.floor(payAmount * 1e2) / 1e2} BAN (${txHash})\``);
+    }
+    
+    if (["forcetransact", "ft"].includes(args[0])) {
+        if (!config["admin-users"].includes(message.author.id)) return;
+        const payAmount = parseFloat(args[1]);
+        const senderID = args[2];
+        const recvID = args[3];
+        if (!payAmount || senderID == undefined || recvID == undefined) return message.reply(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [senderID] [recvID]\``);
+        if (payAmount < config["min-pay"]) return message.reply(`Minimum payment: **${config["min-pay"]} BAN**`);
+        const senderPublicKey = await getPublicKey(senderID);
+        const senderBalance = await accountBalance(senderPublicKey);
+        if (BigNumber(senderBalance.balance).isLessThan(BigNumber(unitsToRaw(payAmount)))) return message.reply("You don't have enough Banano to do that.");
+        const txHash = await sendBanID(recvID, unitsToRaw(payAmount), senderID);
+        await receivePending(recvID);
+        message.reply(`**${Math.floor(payAmount * 1e2) / 1e2} BAN** moved from \`${senderID} => ${recvID}\`.\n\`-${Math.floor(payAmount * 1e2) / 1e2} BAN (${txHash})\``);
     }
 
     if (["coinflip", "cf", "coin", "flip"].includes(args[0])) {
@@ -185,20 +200,23 @@ client.on("messageCreate", async (message) => {
     }
 
     if (["roulette"].includes(args[0])) {
-        if (message.author.id != "293405833231073280") return message.reply("This command is under maintenance ;)");
         const betAmount = parseFloat(args[1]);
         let betOn = (["odd", "even", "low", "high", "red", "black"].includes(args[2]) || (parseInt(args[2]) && parseInt(args[2]) >= 0 && parseInt(args[2]) <= 36)) ? args[2] : false;
         if (!betAmount || !betOn) return message.reply(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [odd/even/low/high/red/black/#]\``);
         if (betAmount < config["min-bet"]) return message.reply(`Minimum bet: **${config["min-bet"]} BAN**`);
         const userBalance = await accountBalance(userPublicKey);
         if (BigNumber(userBalance.balance).isLessThan(BigNumber(unitsToRaw(betAmount)))) return message.reply("You don't have enough Banano to do that.");
-        const txHash0 = await sendBanID(0, unitsToRaw(betAmount), message.author.id);
+        let txHash0;
+        try {
+            txHash0 = await sendBanID(0, unitsToRaw(betAmount), message.author.id);
+        } catch(err) {
+            console.error(err);
+        };
         await axios.get(`https://www.roulette.rip/api/play?bet=${betOn}&wager=${BigNumber(unitsToRaw(betAmount)).toNumber().toLocaleString(undefined, { style: "decimal", useGrouping: false })}`)
         .then(async rouletteResult => {
-            console.log(rouletteResult.data);
             if (rouletteResult.data["bet"]["win"] && rouletteResult.data["roll"]["number"] != 0) {
                     const txHash1 = await sendBanID(message.author.id, parseInt(rouletteResult.data["bet"]["payout"]), 0);
-                    message.reply(`The wheel landed on a **:${rouletteResult.data["roll"]["color"].toLowerCase()}_circle: ${rouletteResult.data["roll"]["number"]}**\n\nCongrats, you won **${BigNumber(rawToUnits(parseInt(rouletteResult.data["bet"]["payout"]))).toFixed(2)} BAN**!\n\`+${BigNumber(rawToUnits(parseInt(rouletteResult.data["bet"]["payout"]))).toFixed(2)} BAN (${txHash1})\``);
+                    message.reply(`The wheel landed on a **:${rouletteResult.data["roll"]["color"].toLowerCase()}_circle: ${rouletteResult.data["roll"]["number"]}**\n\nCongrats, you won **${BigNumber(rawToUnits(parseInt(rouletteResult.data["bet"]["payout"])-betAmount)).toFixed(2)} BAN**!\n\`+${BigNumber(rawToUnits(parseInt(rouletteResult.data["bet"]["payout"]))).toFixed(2)} BAN (${txHash1})\``);
                 } else {
                     message.reply(`The wheel landed on a **:${rouletteResult.data["roll"]["color"].toLowerCase()}_circle: ${rouletteResult.data["roll"]["number"]}**\n\nYou lost...\n\`-${betAmount.toFixed(2)} BAN (${txHash0})\``);
                 }
