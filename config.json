@@ -1,0 +1,12 @@
+{
+    "http-node": "https://kaliumapi.appditto.com/api",
+    "rep-account": "ban_3p1anetee7arfx9zbmspwf9c8c5r88wy6zkgwcbt7rndtcqsoj6fzuy11na3",
+    "prefix": "-",
+    "command-cooldown": 2000,
+    "house-edge": 0.01,
+    "embed-color": "#FBDD11",
+    "qr-code-dark": "#FBDD11",
+    "qr-code-light": "#212124",
+    "min-bet": 0.01,
+    "min-pay": 0.01
+}
