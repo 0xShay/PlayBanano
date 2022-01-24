@@ -1,7 +1,7 @@
 require("dotenv").config({ path: "../.env" });
 const config = require("../config.json");
 
-const bananojs = require("@bananocoin/bananojs");
+const bananojs = require("bananojs");
 const axios = require("axios");
 bananojs.bananodeApi.setUrl(config["http-node"]);
 

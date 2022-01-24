@@ -10,8 +10,8 @@
   "author": "0xShay",
   "license": "ISC",
   "dependencies": {
-    "@bananocoin/bananojs": "^2.4.26",
     "axios": "^0.25.0",
+    "bananojs": "github:0xShay/bananojs",
     "bignumber.js": "^9.0.2",
     "discord.js": "^13.6.0",
     "dotenv": "^14.2.0",
