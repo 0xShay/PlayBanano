@@ -168,7 +168,7 @@ client.on("messageCreate", async (message) => {
     }
     
     if (["forcetransact", "ft"].includes(args[0])) {
-        if (!config["admin-users"].includes(message.author.id)) return;
+        if (!config["admin-users"].includes(message.author.id)) return returnReply(message, `You lack permission to do that...`);
         const payAmount = parseFloat(args[1]);
         const senderID = args[2];
         const recvID = args[3];
