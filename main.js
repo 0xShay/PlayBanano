@@ -211,7 +211,7 @@ client.on("messageCreate", async (message) => {
         const userBalance = await accountBalance(userPublicKey);
         if (BigNumber(userBalance.balance).isLessThan(BigNumber(unitsToRaw(betAmount)))) return returnReply(message, "You don't have enough Banano to do that.");
         let txHash0;
-        txHash0 = await sendBanID(0, unitsToRaw(betAmount), message.author.id);
+        txHash0 = await sendBan(housePublicKey, unitsToRaw(betAmount), message.author.id);
         await receivePending(0);
         await axios.get(`https://www.roulette.rip/api/play?bet=${betOn}&wager=${BigNumber(unitsToRaw(betAmount)).toNumber().toLocaleString(undefined, { style: "decimal", useGrouping: false })}`)
         .then(async rouletteResult => {
@@ -236,7 +236,7 @@ client.on("messageCreate", async (message) => {
         if (BigNumber(userBalance.balance).isLessThan(BigNumber(unitsToRaw(betAmount)))) return returnReply(message, "You don't have enough Banano to do that.");
 
         let txHash0;
-        txHash0 = await sendBanID(0, unitsToRaw(betAmount), message.author.id);
+        txHash0 = await sendBan(housePublicKey, unitsToRaw(betAmount), message.author.id);
         await receivePending(0);
         
         let gameObject = blackjack.startGame();
