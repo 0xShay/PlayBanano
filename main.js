@@ -151,7 +151,7 @@ client.on("messageCreate", async (message) => {
         if (process.env["APP_MODE"] == "TESTING") return message.replyEmbed("Bot is in \`TESTING\` mode");
         let payAmount = parseFloat(args[1]);
         let withdrawAddress = args[2];
-        if (!payAmount || !withdrawAddress) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [@user]\``);
+        if (!payAmount || !withdrawAddress) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [address]\``);
         if (!withdrawAddress.startsWith("ban_")) return message.replyEmbed("Invalid BAN address");
         payAmount = Math.floor(payAmount * 1e2) / 1e2;
         if (payAmount < config["min-bet"]) return message.replyEmbed(`Minimum withdrawal: **${config["min-pay"]} BAN**`);
@@ -209,7 +209,7 @@ client.on("messageCreate", async (message) => {
         }
     }
 
-    if (["roulette"].includes(args[0])) {
+    if (["roulette", "roul"].includes(args[0])) {
         let betAmount = parseFloat(args[1]);
         let betOn = (["odd", "even", "low", "high", "red", "black"].includes(args[2]) || (parseInt(args[2]) && parseInt(args[2]) >= 0 && parseInt(args[2]) <= 36)) ? args[2] : false;
         if (!betAmount || !betOn) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [odd/even/low/high/red/black/#]\``);
