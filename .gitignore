@@ -2,3 +2,4 @@
 
 node_modules/
 db/users-backup.json
+db/users.json

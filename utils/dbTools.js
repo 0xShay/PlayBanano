@@ -7,18 +7,21 @@ const db = new Database({
 exports.getUserInfo = function(uid) {
     let userInfo = db.get(uid) || {};
     return {
-        "balance": userInfo["balance"] || 0
+        "balance": userInfo["balance"] || 0,
+        "totalWagered": userInfo["totalWagered"] || 0,
+        "totalWon": userInfo["totalWon"] || 0,
+        "totalLost": userInfo["totalLost"] || 0
     };
 }
 
-exports.add = function(uid, value) {
+exports.addBalance = function(uid, value) {
     let userInfo = this.getUserInfo(uid);
     userInfo["balance"] += value;
     db.set(uid, userInfo);
     return this.getUserInfo(uid);
 }
 
-exports.transfer = function(sid, rid, value) {
+exports.transferBalance = function(sid, rid, value) {
     let senderInfo = this.getUserInfo(sid);
     let recvInfo = this.getUserInfo(rid);
     senderInfo["balance"] -= value;
