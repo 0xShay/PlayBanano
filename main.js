@@ -94,7 +94,7 @@ client.on("messageCreate", async (message) => {
                 console.log(`Added ${(Math.floor(BigNumber(accountBalance.pending).plus(BigNumber(accountBalance.balance)).div(BigNumber("1e29")).toNumber() * 1e2) / 1e2).toFixed(2)} BAN to ${message.author.id}`);    
             };
         };
-        return message.reply({ embeds: [ defaultEmbed().setDescription(`You have **${dbTools.getUserInfo(message.author.id)["balance"].toFixed(2)} BAN**`) ] });
+        return message.reply({ embeds: [ defaultEmbed().setDescription(`You have **${(Math.floor(dbTools.getUserInfo(message.author.id)["balance"] * 1e2) / 1e2).toFixed(2)} BAN**`) ] });
     }
 
     if (["stats", "info", "statistics", "lookup", "user"].includes(args[0])) {
