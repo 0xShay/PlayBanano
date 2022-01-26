@@ -226,6 +226,7 @@ client.on("messageCreate", async (message) => {
         .then(async rouletteResult => {
             if (rouletteResult.data["bet"]["win"] && rouletteResult.data["roll"]["number"] != 0) {
                     await dbTools.addWon(message.author.id, parseFloat(rouletteResult.data["bet"]["payout"]) - betAmount);
+                    await dbTools.addBalance(message.author.id, parseFloat(rouletteResult.data["bet"]["payout"]));
                     message.replyEmbed(`The wheel landed on a **:${rouletteResult.data["roll"]["color"].toLowerCase()}_circle: ${rouletteResult.data["roll"]["number"]}**\n\nCongrats, you won!\n**+${(parseFloat(rouletteResult.data["bet"]["payout"]) - betAmount).toFixed(2)} BAN**`);
                 } else {
                     await dbTools.addLost(message.author.id, betAmount);
