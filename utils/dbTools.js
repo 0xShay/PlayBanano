@@ -38,3 +38,24 @@ exports.totalBalance = function(uid) {
     });
     return totalBalance;
 }
+
+exports.addWagered = function(uid, value) {
+    let userInfo = this.getUserInfo(uid);
+    userInfo["totalWagered"] += value;
+    db.set(uid, userInfo);
+    return this.getUserInfo(uid);
+}
+
+exports.addWon = function(uid, value) {
+    let userInfo = this.getUserInfo(uid);
+    userInfo["totalWon"] += value;
+    db.set(uid, userInfo);
+    return this.getUserInfo(uid);
+}
+
+exports.addLost = function(uid, value) {
+    let userInfo = this.getUserInfo(uid);
+    userInfo["totalLost"] += value;
+    db.set(uid, userInfo);
+    return this.getUserInfo(uid);
+}

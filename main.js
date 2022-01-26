@@ -162,6 +162,7 @@ client.on("messageCreate", async (message) => {
     }
 
     if (["add"].includes(args[0])) {
+        if (!config["admin-users"].includes(message.author.id)) return message.replyEmbed("You lack permission to do that...");
         let payAmount;
         let recvUser;
         if (message.type === "REPLY") {
@@ -200,11 +201,14 @@ client.on("messageCreate", async (message) => {
         if (betOn == "h") betOn = "heads";
         if (betOn == "t") betOn = "tails";
         if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.replyEmbed("You don't have enough Banano to do that.");
+        await dbTools.addWagered(message.author.id, betAmount);
         if (Math.random() >= (0.5 * (1+config["house-edge"]))) {
-            await dbTools.addBalance(message.author.id, betAmount)
+            await dbTools.addWon(message.author.id, betAmount);
+            await dbTools.addBalance(message.author.id, betAmount);
             return message.replyEmbed(`The coin landed on ${betOn} - congrats!\n**+${betAmount.toFixed(2)} BAN**`);
         } else {
-            await dbTools.addBalance(message.author.id, 0-betAmount)
+            await dbTools.addLost(message.author.id, betAmount);
+            await dbTools.addBalance(message.author.id, 0-betAmount);
             return message.replyEmbed(`The coin landed on ${betOn == "heads" ? "tails" : "heads"}...\n**-${betAmount.toFixed(2)} BAN**`);
         }
     }
@@ -216,13 +220,15 @@ client.on("messageCreate", async (message) => {
         betAmount = Math.floor(betAmount * 1e2) / 1e2;
         if (betAmount < config["min-bet"]) return message.replyEmbed(`Minimum bet: **${config["min-bet"]} BAN**`);
         if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.replyEmbed("You don't have enough Banano to do that.");
+        await dbTools.addWagered(message.author.id, betAmount);
         await dbTools.addBalance(message.author.id, 0-betAmount);
         await axios.get(`https://www.roulette.rip/api/play?bet=${betOn}&wager=${betAmount.toFixed(2)}`)
         .then(async rouletteResult => {
             if (rouletteResult.data["bet"]["win"] && rouletteResult.data["roll"]["number"] != 0) {
-                    await dbTools.addBalance(message.author.id, parseFloat(rouletteResult.data["bet"]["payout"]));
+                    await dbTools.addWon(message.author.id, parseFloat(rouletteResult.data["bet"]["payout"]) - betAmount);
                     message.replyEmbed(`The wheel landed on a **:${rouletteResult.data["roll"]["color"].toLowerCase()}_circle: ${rouletteResult.data["roll"]["number"]}**\n\nCongrats, you won!\n**+${(parseFloat(rouletteResult.data["bet"]["payout"]) - betAmount).toFixed(2)} BAN**`);
                 } else {
+                    await dbTools.addLost(message.author.id, betAmount);
                     message.replyEmbed(`The wheel landed on a **:${rouletteResult.data["roll"]["color"].toLowerCase()}_circle: ${rouletteResult.data["roll"]["number"]}**\n\nYou lost...\n**-${betAmount.toFixed(2)} BAN**`);
                 }
             }).catch(console.error);
