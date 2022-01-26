@@ -86,7 +86,11 @@ client.on("messageCreate", async (message) => {
                 accountBalance = await bananoUtils.accountBalance(userPublicKey);
                 await bananoUtils.sendBanID(0, accountBalance.balance, message.author.id);
                 await dbTools.addBalance(message.author.id, Math.floor(BigNumber(accountBalance.balance).div(BigNumber("1e29")).toNumber() * 1e2) / 1e2);
-                await bananoUtils.receivePending(0);
+                try {
+                    await bananoUtils.receivePending(0);
+                } catch(err) {
+                    console.error(err);
+                };
                 console.log(`Added ${(Math.floor(BigNumber(accountBalance.pending).plus(BigNumber(accountBalance.balance)).div(BigNumber("1e29")).toNumber() * 1e2) / 1e2).toFixed(2)} BAN to ${message.author.id}`);    
             };
         };
@@ -135,7 +139,7 @@ client.on("messageCreate", async (message) => {
     if (["deposit"].includes(args[0])) {
         const userPublicKey = await bananoUtils.getPublicKey(message.author.id);
         QRCode.toDataURL(userPublicKey, function (err, url) {
-            const depositEmbed = new Discord.MessageEmbed()
+            const depositEmbed = defaultEmbed()
             .setDescription(`**${userPublicKey}**`)
             .setImage(`https://quickchart.io/qr?text=${userPublicKey}.png&dark=${config["qr-code-dark"].substring(1)}&light=${config["qr-code-light"].substring(1)}`)
             message.reply({ embeds: [depositEmbed] })
