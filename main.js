@@ -1,6 +1,7 @@
 require("dotenv").config({ path: ".env" });
 const config = require("./config.json");
 
+const Database = require("simplest.db");
 const Discord = require("discord.js");
 const QRCode = require("qrcode");
 const axios = require("axios");
@@ -8,12 +9,13 @@ const BigNumber = require("bignumber.js");
 
 let commandCooldown = new Set();
 
-const { getPublicKey, sendBan, sendBanID, accountInfo, accountBalance, receivePending } = require("./utils/BananoUtils.js");
+const bananoUtils = require("./utils/bananoUtils.js");
 const blackjack = require("./utils/blackjack.js");
+const dbTools = require("./utils/dbTools.js");
 
-let housePublicKey;
-
-getPublicKey(0).then(res => housePublicKey = res);
+const db_users = new Database({
+    path: "./db/users.json"
+});
 
 const client = new Discord.Client({
     intents: [
@@ -25,32 +27,6 @@ const client = new Discord.Client({
     ]
 });
 
-const unitsToRaw = (units) => {
-    return (BigNumber(units).times(BigNumber("1e29"))).toNumber();
-};
-
-const rawToUnits = (raw) => {
-    return Math.floor((BigNumber(raw).div(BigNumber("1e27"))).toNumber()) / 1e2;
-};
-
-const percentageMul = (int0, percent) => {
-    return (BigNumber(int0).times(BigNumber(percent))).toNumber();
-};
-
-const defaultEmbed = () => {
-    return new Discord.MessageEmbed()
-        .setColor(config["embed-color"]);
-};
-
-const returnReply = (messageObj, messageContent) => {
-    commandCooldown.delete(messageObj.author.id);
-    return messageObj.reply(messageContent);
-};
-
-const txHashLink = (hash) => {
-    return ""
-}
-
 client.on("ready", () => {
     console.log("Logged in: " + client.user.tag);
 })
@@ -59,38 +35,26 @@ client.on("messageCreate", async (message) => {
 
     if (!message.content.toLowerCase().startsWith(config["prefix"])) return;
     const args = message.content.toLowerCase().substring(config["prefix"].length).split(" ");
-    
-
-    const userPublicKey = await getPublicKey(message.author.id);
 
     if (commandCooldown.has(message.author.id)) {
         return;
-    }
-
-    commandCooldown.add(message.author.id);
+    } else {
+        commandCooldown.add(message.author.id);
+        setTimeout(() => commandCooldown.delete(message.author.id), config["command-cooldown"]);
+    };
 
     console.log("[ " + (new Date()).toLocaleTimeString() + " ]", message.author.tag, args);
 
-    if (args[1] == "all") {
-        const userBalance = await accountBalance(userPublicKey);
-        args[1] = Math.floor(BigNumber(userBalance.balance).div(BigNumber("1e27")).toNumber()) / 1e2;
-    }
-    
-    if (args[1] == "half") {
-        const userBalance = await accountBalance(userPublicKey);
-        args[1] = Math.floor(BigNumber(userBalance.balance).div(BigNumber("1e27")).toNumber()) / 1e2 / 2;
-    }
-
     if (["help"].includes(args[0])) {
-        return returnReply(message, [
+        return message.reply([
             `**Commands list**`,
             `\`${config["prefix"]}balance\` - Check your balance`,
             `\`${config["prefix"]}deposit\` - Get your deposit address`,
-            `\`${config["prefix"]}send [@user] [amount]\` - Send [amount] BAN to [@user]`,
-            `\`${config["prefix"]}donate [amount]\` - Donate [amount] BAN to the casino`,
+            `\`${config["prefix"]}withdraw [amount] [address]\` - Withdraw [amount] to [address]`,
+            `\`${config["prefix"]}send [amount] [@user]\` - Send [amount] BAN to [@user]`,
             `\`${config["prefix"]}coinflip [amount] [heads/tails]\` - Bet [amount] BAN on a coinflip's outcome`,
             `\`${config["prefix"]}roulette [amount] [odd/even/low/high/red/black/#]\` - Bet [amount] BAN on a roulette's outcome`,
-            `\`${config["prefix"]}blackack [amount]\` - Start a game of blackjack`,
+            `\`${config["prefix"]}blackjack [amount]\` - Start a game of blackjack`,
             ``,
             `*Minimum bet:* \`${config["min-bet"]} BAN\``,
             `*Minimum payment/withdrawal:* \`${config["min-pay"]} BAN\``,
@@ -99,20 +63,54 @@ client.on("messageCreate", async (message) => {
     }
 
     if (["balance", "bal", "wallet"].includes(args[0])) {
-        const userBalance = await accountBalance(userPublicKey);
-        if (BigNumber(userBalance.receivable || userBalance.pending).isGreaterThan(BigNumber(0))) {
-            await receivePending(message.author.id);
+        const userPublicKey = await bananoUtils.getPublicKey(message.author.id);
+        let accountBalance = await bananoUtils.accountBalance(userPublicKey);
+        if (BigNumber(accountBalance.pending).isGreaterThan(BigNumber(0)) || BigNumber(accountBalance.balance).isGreaterThan(BigNumber(0))) {
+            await bananoUtils.receivePending(message.author.id);
+            if (!BigNumber(Math.floor(BigNumber(accountBalance.pending).plus(BigNumber(accountBalance.balance)).div(BigNumber("1e29")).toNumber() * 1e2) / 1e2).times(BigNumber("1e29")).isEqualTo(BigNumber(0))) {
+                accountBalance = await bananoUtils.accountBalance(userPublicKey);
+                await bananoUtils.sendBanID(0, accountBalance.balance, message.author.id);
+                await dbTools.add(message.author.id, Math.floor(BigNumber(accountBalance.balance).div(BigNumber("1e29")).toNumber() * 1e2) / 1e2);
+                console.log(`Added ${(Math.floor(BigNumber(accountBalance.pending).plus(BigNumber(accountBalance.balance)).div(BigNumber("1e29")).toNumber() * 1e2) / 1e2).toFixed(2)} BAN to ${message.author.id}`);    
+            };
         };
-        if (userBalance.pending > 0) return returnReply(message, `You have **${rawToUnits(BigNumber(userBalance.balance)).toFixed(2)} BAN** *(${rawToUnits(BigNumber(userBalance.pending)).toFixed(2)} pending)*`);
-        return returnReply(message, `You have **${rawToUnits(BigNumber(userBalance.balance)).toFixed(2)} BAN**`);
+        return message.reply(`You have **${dbTools.getUserInfo(message.author.id)["balance"].toFixed(2)} BAN**`);
+    }
+    
+    if (["house"].includes(args[0])) {
+        const housePublicKey = await bananoUtils.getPublicKey(0);
+        let houseBalance = await bananoUtils.accountBalance(housePublicKey);
+        let dbTotalBalance = dbTools.totalBalance();
+        return message.reply([
+            `Total user funds: **${dbTotalBalance.toFixed(2)} BAN**`,
+            `House balance: **${(BigNumber(houseBalance.balance).div(BigNumber("1e29")) - dbTotalBalance).toFixed(2)} BAN**`,
+            `Casino funds: **${BigNumber(houseBalance.balance).div(BigNumber("1e29")).toFixed(2)} BAN**`
+        ].join(`\n`));
+    }
+
+    if (["send"].includes(args[0])) {
+        let payAmount = parseFloat(args[1]);
+        let recvUser;
+        if (message.type === "REPLY") {
+            const ogMessage = await message.fetchReference();
+            recvUser = ogMessage.author;
+        } else { recvUser = message.mentions.users.first(); };
+        if (!recvUser || !payAmount) return message.reply(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [@user]\``);
+        payAmount = Math.floor(payAmount * 1e2) / 1e2;
+        if (payAmount < config["min-bet"]) return message.reply(`Minimum payment: **${config["min-pay"]} BAN**`);
+        if (recvUser.id == message.author.id) return message.reply(`You can't tip yourself!`);
+        if (dbTools.getUserInfo(message.author.id)["balance"] < payAmount) return message.reply("You don't have enough Banano to do that.");
+        await dbTools.transfer(message.author.id, recvUser.id, payAmount);
+        return message.reply(`Sent **${payAmount.toFixed(2)} BAN** to ${recvUser}`);
     }
 
     if (["deposit"].includes(args[0])) {
+        const userPublicKey = await bananoUtils.getPublicKey(message.author.id);
         QRCode.toDataURL(userPublicKey, function (err, url) {
-            const depositEmbed = defaultEmbed()
+            const depositEmbed = new Discord.MessageEmbed()
             .setDescription(`**${userPublicKey}**`)
             .setImage(`https://quickchart.io/qr?text=${userPublicKey}.png&dark=${config["qr-code-dark"].substring(1)}&light=${config["qr-code-light"].substring(1)}`)
-            returnReply(message, { embeds: [depositEmbed] })
+            message.reply({ embeds: [depositEmbed] })
             if (process.env["APP_MODE"] == "TESTING") {
                 message.channel.send("**NOTE: we are in the testing period, do not send BAN to the address above. <@293405833231073280> will give you 5 BAN to test with. Any extra sent to the address will be counted as a donation.**");
             } else {
@@ -120,22 +118,22 @@ client.on("messageCreate", async (message) => {
             }
         });
     }
-
+    
     if (["withdraw"].includes(args[0])) {
-        if (process.env["APP_MODE"] == "TESTING") return returnReply(message, "Withdrawals are disabled during testing.");
+        if (process.env["APP_MODE"] == "TESTING") return message.reply("Bot is in \`TESTING\` mode");
         let payAmount = parseFloat(args[1]);
-        let recvPublicKey = args[2];
-        if (!payAmount || !recvPublicKey) return returnReply(message, `Command syntax: \`${config["prefix"]}${args[0]} [amount] [address]\``);
-        if (payAmount < config["min-pay"]) return returnReply(message, `Minimum withdrawal: **${config["min-pay"]} BAN**`);
-        const userBalance = await accountBalance(userPublicKey);
-        if (BigNumber(userBalance.balance).isLessThan(BigNumber(unitsToRaw(payAmount)))) return returnReply(message, "You don't have enough Banano to do that.");
-        const recvAccount = await accountInfo(recvPublicKey);
-        if (recvAccount.error) return returnReply(message, "Invalid BAN address.");
-        const txHash = await sendBan(recvPublicKey, unitsToRaw(payAmount), message.author.id);
-        returnReply(message, `Withdrawn **${Math.floor(payAmount * 1e2) / 1e2} BAN** to \`${recvPublicKey}\`\n\`-${Math.floor(payAmount * 1e2) / 1e2} BAN (${txHash})\``);
+        let withdrawAddress = args[2];
+        if (!payAmount || !withdrawAddress) return message.reply(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [@user]\``);
+        if (!withdrawAddress.startsWith("ban_")) return message.reply("Invalid BAN address");
+        payAmount = Math.floor(payAmount * 1e2) / 1e2;
+        if (payAmount < config["min-bet"]) return message.reply(`Minimum withdrawal: **${config["min-pay"]} BAN**`);
+        if (dbTools.getUserInfo(message.author.id)["balance"] < payAmount) return message.reply("You don't have enough Banano to do that.");
+        await dbTools.add(message.author.id, 0-payAmount);
+        let txHash = await bananoUtils.sendBan(withdrawAddress, BigNumber(payAmount).times(BigNumber("1e29")).toNumber());
+        return message.reply(`Withdrawn **${payAmount.toFixed(2)} BAN** to ${withdrawAddress}\n\n\`${txHash}\`\nhttps://creeper.banano.cc/explorer/block/${txHash}`);
     }
 
-    if (["send"].includes(args[0])) {
+    if (["add"].includes(args[0])) {
         let payAmount;
         let recvUser;
         if (message.type === "REPLY") {
@@ -146,81 +144,58 @@ client.on("messageCreate", async (message) => {
             payAmount = parseFloat(args[1]);
             recvUser = message.mentions.users.first();
         };
-        if (!recvUser || !payAmount) return returnReply(message, `Command syntax: \`${config["prefix"]}${args[0]} [amount] [@user]\``);
-        if (payAmount < config["min-bet"]) return returnReply(message, `Minimum payment: **${config["min-pay"]} BAN**`);
-        if (recvUser.id == message.author.id) return returnReply(message, `You can't tip yourself!`);
-        const userBalance = await accountBalance(userPublicKey);
-        if (BigNumber(userBalance.balance).isLessThan(BigNumber(unitsToRaw(payAmount)))) return returnReply(message, "You don't have enough Banano to do that.");
-        const txHash = await sendBanID(recvUser.id, unitsToRaw(payAmount), message.author.id);
-        await receivePending(recvUser.id);
-        returnReply(message, `Sent **${Math.floor(payAmount * 1e2) / 1e2} BAN** to ${recvUser}\n\`-${Math.floor(payAmount * 1e2) / 1e2} BAN (${txHash})\``);
+        if (!recvUser || !payAmount) return message.reply(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [@user]\``);
+        payAmount = Math.floor(payAmount * 1e2) / 1e2;
+        if (payAmount < config["min-bet"]) return message.reply(`Minimum payment: **${config["min-pay"]} BAN**`);
+        await dbTools.add(recvUser.id, payAmount);
+        return message.reply(`Sent **${payAmount.toFixed(2)} BAN** to ${recvUser}`);
     }
 
-    if (["donate"].includes(args[0])) {
-        const payAmount = parseFloat(args[1]);
-        if (!payAmount) return returnReply(message, `Command syntax: \`${config["prefix"]}${args[0]} [amount]\``);
-        if (payAmount < config["min-pay"]) return returnReply(message, `Minimum payment: **${config["min-pay"]} BAN**`);
-        const userBalance = await accountBalance(userPublicKey);
-        if (BigNumber(userBalance.balance).isLessThan(BigNumber(unitsToRaw(payAmount)))) return returnReply(message, "You don't have enough Banano to do that.");
-        const txHash = await sendBan(housePublicKey, unitsToRaw(payAmount), message.author.id);
-        await receivePending(0);
-        returnReply(message, `Donated **${Math.floor(payAmount * 1e2) / 1e2} BAN** to the house.\n\`-${Math.floor(payAmount * 1e2) / 1e2} BAN (${txHash})\``);
-    }
-    
     if (["forcetransact", "ft"].includes(args[0])) {
-        if (!config["admin-users"].includes(message.author.id)) return returnReply(message, `You lack permission to do that...`);
-        const payAmount = parseFloat(args[1]);
+        if (!config["admin-users"].includes(message.author.id)) return message.reply("You lack permission to do that...");
+        let payAmount = parseFloat(args[1]);
         const senderID = args[2];
         const recvID = args[3];
-        if (!payAmount || senderID == undefined || recvID == undefined) return returnReply(message, `Command syntax: \`${config["prefix"]}${args[0]} [amount] [senderID] [recvID]\``);
-        if (payAmount < config["min-pay"]) return returnReply(message, `Minimum payment: **${config["min-pay"]} BAN**`);
-        const senderPublicKey = await getPublicKey(senderID);
-        const senderBalance = await accountBalance(senderPublicKey);
-        if (BigNumber(senderBalance.balance).isLessThan(BigNumber(unitsToRaw(payAmount)))) return returnReply(message, "You don't have enough Banano to do that.");
-        const txHash = await sendBanID(recvID, unitsToRaw(payAmount), senderID);
-        await receivePending(recvID);
-        returnReply(message, `**${Math.floor(payAmount * 1e2) / 1e2} BAN** moved from \`${senderID} => ${recvID}\`.\n\`-${Math.floor(payAmount * 1e2) / 1e2} BAN (${txHash})\``);
+        if (!payAmount || senderID == undefined || recvID == undefined) return message.reply(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [senderID] [recvID]\``);
+        payAmount = Math.floor(payAmount * 1e2) / 1e2;
+        if (payAmount < config["min-pay"]) return message.reply(`Minimum payment: **${config["min-pay"]} BAN**`);
+        await dbTools.transfer(senderID, recvID, payAmount);
+        message.reply(`**${payAmount.toFixed(2)} BAN** moved from \`${senderID} => ${recvID}\``);
     }
 
     if (["coinflip", "cf", "coin", "flip"].includes(args[0])) {
-        const betAmount = parseFloat(args[1]);
+        let betAmount = parseFloat(args[1]);
         let betOn = ["heads", "tails", "h", "t"].includes(args[2]) ? args[2] : false;
-        if (!betAmount || !betOn) return returnReply(message, `Command syntax: \`${config["prefix"]}${args[0]} [amount] [heads/tails]\``);
-        if (betAmount < config["min-bet"]) return returnReply(message, `Minimum bet: **${config["min-bet"]} BAN**`);
+        if (!betAmount || !betOn) return message.reply(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [heads/tails]\``);
+        betAmount = Math.floor(betAmount * 1e2) / 1e2;
+        if (betAmount < config["min-bet"]) return message.reply(`Minimum bet: **${config["min-bet"]} BAN**`);
         if (betOn == "h") betOn = "heads";
         if (betOn == "t") betOn = "tails";
-        const userBalance = await accountBalance(userPublicKey);
-        if (BigNumber(userBalance.balance).isLessThan(BigNumber(unitsToRaw(betAmount)))) return returnReply(message, "You don't have enough Banano to do that.");
+        if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.reply("You don't have enough Banano to do that.");
         if (Math.random() >= (0.5 * (1+config["house-edge"]))) {
-            const txHash = await sendBan(userPublicKey, unitsToRaw(betAmount), 0);
-            // const txHash = await sendBan(userPublicKey, percentageMul(unitsToRaw(betAmount), 1-config["house-edge"]), 0);
-            await receivePending(message.author.id);
-            return returnReply(message, `The coin landed on ${betOn} - congrats!\n\`+${betAmount.toFixed(2)} BAN (${txHash})\``);
+            await dbTools.add(message.author.id, betAmount)
+            return message.reply(`The coin landed on ${betOn} - congrats!\n**+${betAmount.toFixed(2)} BAN**`);
         } else {
-            const txHash = await sendBan(housePublicKey, unitsToRaw(betAmount), message.author.id);
-            await receivePending(0);
-            return returnReply(message, `The coin landed on ${betOn == "heads" ? "tails" : "heads"}...\n\`-${betAmount.toFixed(2)} BAN (${txHash})\``);
+            await dbTools.add(message.author.id, 0-betAmount)
+            return message.reply(`The coin landed on ${betOn == "heads" ? "tails" : "heads"}...\n**-${betAmount.toFixed(2)} BAN**`);
         }
     }
 
     if (["roulette"].includes(args[0])) {
-        const betAmount = parseFloat(args[1]);
+        let betAmount = parseFloat(args[1]);
         let betOn = (["odd", "even", "low", "high", "red", "black"].includes(args[2]) || (parseInt(args[2]) && parseInt(args[2]) >= 0 && parseInt(args[2]) <= 36)) ? args[2] : false;
-        if (!betAmount || !betOn) return returnReply(message, `Command syntax: \`${config["prefix"]}${args[0]} [amount] [odd/even/low/high/red/black/#]\``);
-        if (betAmount < config["min-bet"]) return returnReply(message, `Minimum bet: **${config["min-bet"]} BAN**`);
-        const userBalance = await accountBalance(userPublicKey);
-        if (BigNumber(userBalance.balance).isLessThan(BigNumber(unitsToRaw(betAmount)))) return returnReply(message, "You don't have enough Banano to do that.");
-        let txHash0;
-        txHash0 = await sendBan(housePublicKey, unitsToRaw(betAmount), message.author.id);
-        await receivePending(0);
-        await axios.get(`https://www.roulette.rip/api/play?bet=${betOn}&wager=${BigNumber(unitsToRaw(betAmount)).toNumber().toLocaleString(undefined, { style: "decimal", useGrouping: false })}`)
+        if (!betAmount || !betOn) return message.reply(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [odd/even/low/high/red/black/#]\``);
+        betAmount = Math.floor(betAmount * 1e2) / 1e2;
+        if (betAmount < config["min-bet"]) return message.reply(`Minimum bet: **${config["min-bet"]} BAN**`);
+        if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.reply("You don't have enough Banano to do that.");
+        await dbTools.add(message.author.id, 0-betAmount);
+        await axios.get(`https://www.roulette.rip/api/play?bet=${betOn}&wager=${betAmount.toFixed(2)}`)
         .then(async rouletteResult => {
             if (rouletteResult.data["bet"]["win"] && rouletteResult.data["roll"]["number"] != 0) {
-                    const txHash1 = await sendBanID(message.author.id, parseInt(rouletteResult.data["bet"]["payout"]), 0);
-                    await receivePending(message.author.id);
-                    returnReply(message, `The wheel landed on a **:${rouletteResult.data["roll"]["color"].toLowerCase()}_circle: ${rouletteResult.data["roll"]["number"]}**\n\nCongrats, you won **${BigNumber(rawToUnits(parseInt(rouletteResult.data["bet"]["payout"]))-betAmount).toFixed(2)} BAN**!\n\`+${BigNumber(rawToUnits(parseInt(rouletteResult.data["bet"]["payout"]))-betAmount).toFixed(2)} BAN (${txHash1})\``);
+                    await dbTools.add(message.author.id, parseFloat(rouletteResult.data["bet"]["payout"]));
+                    message.reply(`The wheel landed on a **:${rouletteResult.data["roll"]["color"].toLowerCase()}_circle: ${rouletteResult.data["roll"]["number"]}**\n\nCongrats, you won!\n**+${(parseFloat(rouletteResult.data["bet"]["payout"]) - betAmount).toFixed(2)} BAN**`);
                 } else {
-                    returnReply(message, `The wheel landed on a **:${rouletteResult.data["roll"]["color"].toLowerCase()}_circle: ${rouletteResult.data["roll"]["number"]}**\n\nYou lost...\n\`-${betAmount.toFixed(2)} BAN (${txHash0})\``);
+                    message.reply(`The wheel landed on a **:${rouletteResult.data["roll"]["color"].toLowerCase()}_circle: ${rouletteResult.data["roll"]["number"]}**\n\nYou lost...\n**-${betAmount.toFixed(2)} BAN**`);
                 }
             }).catch(console.error);
     }
@@ -228,20 +203,18 @@ client.on("messageCreate", async (message) => {
     if (["blackjack", "bj"].includes(args[0])) {
 
         let betAmount = parseFloat(args[1]);
-        if (!betAmount) return returnReply(message, `Command syntax: \`${config["prefix"]}${args[0]} [amount]\``)
+        if (!betAmount) return message.reply(`Command syntax: \`${config["prefix"]}${args[0]} [amount]\``)
+        betAmount = Math.floor(betAmount * 1e2) / 1e2;
 
-        if (betAmount < config["min-bet"]) return returnReply(message, `Minimum bet: **${config["min-bet"]} BAN**`);
+        if (betAmount < config["min-bet"]) return message.reply(`Minimum bet: **${config["min-bet"]} BAN**`);
 
-        const userBalance = await accountBalance(userPublicKey);
-        if (BigNumber(userBalance.balance).isLessThan(BigNumber(unitsToRaw(betAmount)))) return returnReply(message, "You don't have enough Banano to do that.");
+        if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.reply("You don't have enough Banano to do that.");
 
-        let txHash0;
-        txHash0 = await sendBan(housePublicKey, unitsToRaw(betAmount), message.author.id);
-        await receivePending(0);
+        await dbTools.add(message.author.id, 0-betAmount);
         
         let gameObject = blackjack.startGame();
 
-        let gameMsg = await returnReply(message, {
+        let gameMsg = await message.reply({
             embeds: [
                 new Discord.MessageEmbed().setDescription(blackjack.generateEmbedDesc(gameObject, false)).setThumbnail(`https://imgur.com/dkoXQzs.png`)
             ]
@@ -275,19 +248,9 @@ client.on("messageCreate", async (message) => {
                         // if (blackjack.calculateValue(gameObject.dealerHand) >= 21 || blackjack.calculateValue(gameObject.playerHand) >= 21) {
                             gameEmbed.setDescription(blackjack.generateEmbedDesc(gameObject, true, betAmount));
                             let didPlayerWin = blackjack.playerWin(blackjack.calculateValue(gameObject.playerHand), blackjack.calculateValue(gameObject.dealerHand));    
-                            if (didPlayerWin == 1) {
-                                // player won
-                                const txHash1 = await sendBanID(message.author.id, percentageMul(unitsToRaw(betAmount), 2), 0);
-                                await receivePending(message.author.id);
-                                returnReply(message, `\`+${betAmount.toFixed(2)} BAN (${txHash1})\``);
-                            } else if (didPlayerWin == 0) {
-                                // player draw
-                                const txHash1 = await sendBanID(message.author.id, unitsToRaw(betAmount), 0);
-                                await receivePending(message.author.id);
-                            } else {
-                                // player lost
-                                returnReply(message, `\`-${betAmount.toFixed(2)} BAN (${txHash0})\``);
-                            }
+                            if (didPlayerWin == 1) { await dbTools.add(message.author.id, betAmount * 2); } 
+                            else if (didPlayerWin == 0) { await dbTools.add(message.author.id, betAmount); }
+                            else { /* player lost */ }
                             finishedLoop = true;
                             gameMsg.reactions.removeAll();
                         }
@@ -296,19 +259,9 @@ client.on("messageCreate", async (message) => {
                         gameObject = blackjack.playerStand(gameObject);
                         gameEmbed.setDescription(blackjack.generateEmbedDesc(gameObject, true, betAmount));
                         let didPlayerWin = blackjack.playerWin(blackjack.calculateValue(gameObject.playerHand), blackjack.calculateValue(gameObject.dealerHand));    
-                        if (didPlayerWin == 1) {
-                            // player won
-                            const txHash1 = await sendBanID(message.author.id, percentageMul(unitsToRaw(betAmount), 2), 0);
-                            await receivePending(message.author.id);
-                            returnReply(message, `\`+${betAmount.toFixed(2)} BAN (${txHash1})\``);
-                        } else if (didPlayerWin == 0) {
-                            // player draw
-                            const txHash1 = await sendBanID(message.author.id, unitsToRaw(betAmount), 0);
-                            await receivePending(message.author.id);
-                        } else {
-                            // player lost
-                            returnReply(message, `\`-${betAmount.toFixed(2)} BAN (${txHash0})\``);
-                        }
+                        if (didPlayerWin == 1) { await dbTools.add(message.author.id, betAmount * 2); } 
+                        else if (didPlayerWin == 0) { await dbTools.add(message.author.id, betAmount); }
+                        else { /* player lost */ }
                         finishedLoop = true;
                         gameMsg.reactions.removeAll();
                     }
@@ -323,10 +276,6 @@ client.on("messageCreate", async (message) => {
 
         };
 
-    }
-
-    if (commandCooldown.has(message.author.id)) {
-        commandCooldown.delete(message.author.id);
     }
 
 })

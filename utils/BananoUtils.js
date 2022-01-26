@@ -60,7 +60,6 @@ exports.accountBalance = async (account) => {
 
 exports.receivePending = async (pkI=0) => {
     const txList = await bananojs.receiveBananoDepositsForSeed(seed, pkI, config["rep-account"]);
-    const userAccount = await this.getPublicKey(pkI);
     return txList;
 }
 

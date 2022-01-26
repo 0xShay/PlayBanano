@@ -1,7 +1,7 @@
 const Discord = require(`discord.js`);
 const config = require(`../config.json`);
 
-function formatNum(num) { return num.toFixed(2); }
+function formatNum(num) { return num.toFixed(2) + " BAN"; }
 
 let cardNumbers = [`A`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `10`, `J`, `Q`, `K`];
 let cardSuits = [`hearts`, `spades`, `diamonds`, `clubs`];
@@ -53,6 +53,9 @@ exports.startGame = function() {
 }
 
 exports.playerWin = function(playerValue, dealerValue) {
+    if (playerValue <= 21 && dealerValue > 21) {
+        return 1;
+    }
     if (playerValue > 21 && dealerValue <= 21) {
         return -1;
     }
@@ -60,7 +63,11 @@ exports.playerWin = function(playerValue, dealerValue) {
         return 1;
     }
     if (playerValue == dealerValue) {
-        return 0;
+        if (playerValue > 21 && dealerValue > 21) {
+            return -1;
+        } else {
+            return 0;
+        }
     }
     if (playerValue <= 21 && dealerValue <= 21) {
         // closest to 21 wins
@@ -79,10 +86,10 @@ exports.calculateValue = function(hand) {
         if (b[0] == `A`) return -1;
     }).forEach(card => {
         if (card == `A`) {
-            if (total + 11 > 21) {
-                total += 1
-            } else {
+            if ((total + 11) <= 21) {
                 total += 11
+            } else {
+                total += 1
             }
         } else {
             total += cardValues[cardNumbers.indexOf(card[0])];
