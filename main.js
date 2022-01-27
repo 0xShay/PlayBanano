@@ -178,6 +178,13 @@ client.on("messageCreate", async (message) => {
                     lbEmbed.addField(`${i + 1}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${dbJSON[i]["totalLost"].toFixed(2)} BAN`);
                 }
                 break;
+            case "balance":
+                dbJSON = dbJSON.sort((a, b) => b["balance"] - a["balance"]);
+                for (let i = 0; i < (dbJSON.length < 10 ? dbJSON.length : 10); i++) {
+                    let fetchedUser = client.users.cache.get(dbJSON[i]["uid"]);
+                    lbEmbed.addField(`${i + 1}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${dbJSON[i]["balance"].toFixed(2)} BAN`);
+                }
+                break;
         }
 
         return message.reply({ embeds: [ lbEmbed ] });
