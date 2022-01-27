@@ -50,8 +50,8 @@ client.on("ready", () => {
 
 client.on("messageCreate", async (message) => {
 
-    message.replyEmbed = (desc) => {
-        message.reply({ embeds: [ defaultEmbed().setDescription(desc) ] });
+    message.replyEmbed = (desc, color=config["embed-color"]) => {
+        message.reply({ embeds: [ defaultEmbed().setDescription(desc).setColor(color) ] });
     };
 
     if (!message.content.toLowerCase().startsWith(config["prefix"])) return;
@@ -264,15 +264,15 @@ client.on("messageCreate", async (message) => {
         if (ranGen >= (0.5 * (1+config["house-edge"]))) {
             await dbTools.addWon(message.author.id, betAmount);
             await dbTools.addBalance(message.author.id, betAmount);
-            return message.replyEmbed(`The coin landed on ${betOn} - congrats!\n**+${betAmount.toFixed(2)} BAN**`);
+            return message.replyEmbed(`The coin landed on ${betOn} - congrats!\n**+${betAmount.toFixed(2)} BAN**`, config["embed-color-win"]);
         } else {
             await dbTools.addLost(message.author.id, betAmount);
             await dbTools.addBalance(message.author.id, 0-betAmount);
-            return message.replyEmbed(`The coin landed on ${betOn == "heads" ? "tails" : "heads"}...\n**-${betAmount.toFixed(2)} BAN**`);
+            return message.replyEmbed(`The coin landed on ${betOn == "heads" ? "tails" : "heads"}...\n**-${betAmount.toFixed(2)} BAN**`, config["embed-color-loss"]);
         }
     }
 
-    if (["roulette", "roul"].includes(args[0])) {
+    if (["roulette", "roul", "r"].includes(args[0])) {
         let betAmount = parseFloat(args[1]);
         let betOn = (["odd", "even", "low", "high", "red", "black"].includes(args[2]) || (parseInt(args[2]) && parseInt(args[2]) >= 0 && parseInt(args[2]) <= 36)) ? args[2] : false;
         if (!betAmount || !betOn) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [odd/even/low/high/red/black/#]\``);
@@ -286,10 +286,10 @@ client.on("messageCreate", async (message) => {
             if (rouletteResult.data["bet"]["win"] && rouletteResult.data["roll"]["number"] != 0) {
                     await dbTools.addWon(message.author.id, parseFloat(rouletteResult.data["bet"]["payout"]) - betAmount);
                     await dbTools.addBalance(message.author.id, parseFloat(rouletteResult.data["bet"]["payout"]));
-                    message.replyEmbed(`The wheel landed on a **:${rouletteResult.data["roll"]["color"].toLowerCase()}_circle: ${rouletteResult.data["roll"]["number"]}**\n\nCongrats, you won!\n**+${(parseFloat(rouletteResult.data["bet"]["payout"]) - betAmount).toFixed(2)} BAN**`);
+                    message.replyEmbed(`The wheel landed on a **:${rouletteResult.data["roll"]["color"].toLowerCase()}_circle: ${rouletteResult.data["roll"]["number"]}**\n\nCongrats, you won!\n**+${(parseFloat(rouletteResult.data["bet"]["payout"]) - betAmount).toFixed(2)} BAN**`, config["embed-color-win"]);
                 } else {
                     await dbTools.addLost(message.author.id, betAmount);
-                    message.replyEmbed(`The wheel landed on a **:${rouletteResult.data["roll"]["color"].toLowerCase()}_circle: ${rouletteResult.data["roll"]["number"]}**\n\nYou lost...\n**-${betAmount.toFixed(2)} BAN**`);
+                    message.replyEmbed(`The wheel landed on a **:${rouletteResult.data["roll"]["color"].toLowerCase()}_circle: ${rouletteResult.data["roll"]["number"]}**\n\nYou lost...\n**-${betAmount.toFixed(2)} BAN**`, config["embed-color-loss"]);
                 }
             }).catch(console.error);
     }
