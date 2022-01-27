@@ -8,7 +8,6 @@ exports.getUserInfo = function(uid) {
     let userInfo = db.get(uid) || {};
     return {
         "balance": userInfo["balance"] || 0,
-        "totalWagered": userInfo["totalWagered"] || 0,
         "totalWon": userInfo["totalWon"] || 0,
         "totalLost": userInfo["totalLost"] || 0
     };
@@ -37,13 +36,6 @@ exports.totalBalance = function(uid) {
         totalBalance += (u.balance || 0);
     });
     return totalBalance;
-}
-
-exports.addWagered = function(uid, value) {
-    let userInfo = this.getUserInfo(uid);
-    userInfo["totalWagered"] += value;
-    db.set(uid, userInfo);
-    return this.getUserInfo(uid);
 }
 
 exports.addWon = function(uid, value) {

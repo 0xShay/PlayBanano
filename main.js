@@ -120,9 +120,10 @@ client.on("messageCreate", async (message) => {
         const userEmbed = defaultEmbed()
             .setTitle("User information")
             .addField("Balance", `${userInfo["balance"].toFixed(2)} BAN`)
-            .addField("Total wagered", `${userInfo["totalWagered"].toFixed(2)} BAN`)
+            .addField("Total wagered", `${(userInfo["totalWon"] + userInfo["totalLost"]).toFixed(2)} BAN`)
             .addField("Winnings", `+${userInfo["totalWon"].toFixed(2)} BAN`, true)
             .addField("Losses", `-${userInfo["totalLost"].toFixed(2)} BAN`, true)
+            .addField("Net P/L", `${(userInfo["totalWon"] - userInfo["totalLost"]).toFixed(2)} BAN`, false)
         return message.reply({ embeds: [ userEmbed ] });
     }
     
@@ -142,10 +143,10 @@ client.on("messageCreate", async (message) => {
 
         switch (lbType) {
             case "wagered":
-                dbJSON = dbJSON.sort((a, b) => b["totalWagered"] - a["totalWagered"]);
+                dbJSON = dbJSON.sort((a, b) => (b["totalWon"] + b["totalLost"]) - (a["totalWon"] + a["totalLost"]));
                 for (let i = 0; i < (dbJSON.length < 10 ? dbJSON.length : 10); i++) {
                     let fetchedUser = client.users.cache.get(dbJSON[i]["uid"]);
-                    lbEmbed.addField(`${i + 1}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${dbJSON[i]["totalWagered"].toFixed(2)} BAN`);
+                    lbEmbed.addField(`${i + 1}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${(dbJSON[i]["totalWon"] + dbJSON[i]["totalLost"]).toFixed(2)} BAN`);
                 }
                 break;
             case "won":
@@ -269,7 +270,6 @@ client.on("messageCreate", async (message) => {
         if (betOn == "h") betOn = "heads";
         if (betOn == "t") betOn = "tails";
         if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.replyEmbed("You don't have enough Banano to do that.");
-        await dbTools.addWagered(message.author.id, betAmount);
         let ranGen = await generateRandom();
         if (ranGen >= (0.5 * (1+config["house-edge"]))) {
             await dbTools.addWon(message.author.id, betAmount);
@@ -289,7 +289,6 @@ client.on("messageCreate", async (message) => {
         betAmount = Math.floor(betAmount * 1e2) / 1e2;
         if (betAmount < config["min-bet"]) return message.replyEmbed(`Minimum bet: **${config["min-bet"]} BAN**`);
         if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.replyEmbed("You don't have enough Banano to do that.");
-        await dbTools.addWagered(message.author.id, betAmount);
         await dbTools.addBalance(message.author.id, 0-betAmount);
         await axios.get(`https://www.roulette.rip/api/play?bet=${betOn}&wager=${betAmount.toFixed(2)}`)
         .then(async rouletteResult => {
