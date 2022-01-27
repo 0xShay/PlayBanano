@@ -2,7 +2,7 @@
     "http-node": "https://kaliumapi.appditto.com/api",
     "rep-account": "ban_3p1anetee7arfx9zbmspwf9c8c5r88wy6zkgwcbt7rndtcqsoj6fzuy11na3",
     "prefix": "-",
-    "command-cooldown": 2000,
+    "command-cooldown": 1000,
     "house-edge": 0.01,
     "embed-color": "#4CBF4B",
     "embed-footer-text": "Powered by PlayBanano",
