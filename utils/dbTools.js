@@ -59,3 +59,7 @@ exports.addLost = function(uid, value) {
     db.set(uid, userInfo);
     return this.getUserInfo(uid);
 }
+
+exports.getJSON = function(uid, value) {
+    return JSON.parse(db.toJSON());
+}

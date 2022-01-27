@@ -122,6 +122,47 @@ client.on("messageCreate", async (message) => {
         return message.reply({ embeds: [ userEmbed ] });
     }
     
+    if (["leaderboard", "lb", "top"].includes(args[0])) {
+        const lbType = args[1];
+        if (!["wagered", "won", "lost"].includes(lbType)) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [wagered/won/lost]\``);
+        let dbJSONraw = dbTools.getJSON();
+        const lbEmbed = defaultEmbed()
+            .setTitle("Leaderboard | Total wagered")
+            // .addField("Losses", `-${userInfo["totalLost"].toFixed(2)} BAN`, true)
+        
+        let dbJSON = [];
+        Object.keys(dbJSONraw).forEach(uid => {
+            dbJSONraw[uid]["uid"] = uid;
+            dbJSON.push(dbJSONraw[uid]);
+        });
+
+        switch (lbType) {
+            case "wagered":
+                dbJSON = dbJSON.sort((a, b) => b["totalWagered"] - a["totalWagered"]);
+                for (let i = 0; i < (dbJSON.length < 10 ? dbJSON.length : 10); i++) {
+                    let fetchedUser = client.users.cache.get(dbJSON[i]["uid"]);
+                    lbEmbed.addField(`${i + 1}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${dbJSON[i]["totalWagered"].toFixed(2)} BAN`);
+                }
+                break;
+            case "won":
+                dbJSON = dbJSON.sort((a, b) => b["totalWon"] - a["totalWon"]);
+                for (let i = 0; i < (dbJSON.length < 10 ? dbJSON.length : 10); i++) {
+                    let fetchedUser = client.users.cache.get(dbJSON[i]["uid"]);
+                    lbEmbed.addField(`${i + 1}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${dbJSON[i]["totalWon"].toFixed(2)} BAN`);
+                }
+                break;
+            case "lost":
+                dbJSON = dbJSON.sort((a, b) => b["totalLost"] - a["totalLost"]);
+                for (let i = 0; i < (dbJSON.length < 10 ? dbJSON.length : 10); i++) {
+                    let fetchedUser = client.users.cache.get(dbJSON[i]["uid"]);
+                    lbEmbed.addField(`${i + 1}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${dbJSON[i]["totalLost"].toFixed(2)} BAN`);
+                }
+                break;
+        }
+
+        return message.reply({ embeds: [ lbEmbed ] });
+    }
+    
     if (["house"].includes(args[0])) {
         const housePublicKey = await bananoUtils.getPublicKey(0);
         let houseBalance = await bananoUtils.accountBalance(housePublicKey);
