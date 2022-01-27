@@ -11,6 +11,8 @@ const randomNumber = require("random-number-csprng");
 let commandCooldown = new Set();
 let balanceCooldown = new Set();
 
+let disabled = false;
+
 const bananoUtils = require("./utils/bananoUtils.js");
 const blackjack = require("./utils/blackjack.js");
 const dbTools = require("./utils/dbTools.js");
@@ -49,6 +51,8 @@ client.on("ready", () => {
 })
 
 client.on("messageCreate", async (message) => {
+
+    if (disabled && !config["admin-users"].includes(message.author.id)) return;
 
     message.replyEmbed = (desc, color=config["embed-color"]) => {
         message.reply({ embeds: [ defaultEmbed().setDescription(desc).setColor(color) ] });
@@ -236,6 +240,12 @@ client.on("messageCreate", async (message) => {
         payAmount = Math.floor(payAmount * 1e2) / 1e2;
         await dbTools.addBalance(recvUser.id, payAmount);
         return message.replyEmbed(`Sent **${payAmount.toFixed(2)} BAN** to ${recvUser}`);
+    }
+    
+    if (["disable", "enable"].includes(args[0])) {
+        if (!config["admin-users"].includes(message.author.id)) return message.replyEmbed("You lack permission to do that...");
+        disabled = !disabled;
+        return message.replyEmbed(`Commands are now **${disabled ? "disabled" : "enabled"}**.`);
     }
 
     if (["forcetransact", "ft"].includes(args[0])) {
