@@ -9,6 +9,7 @@ const BigNumber = require("bignumber.js");
 const randomNumber = require("random-number-csprng");
 
 let commandCooldown = new Set();
+let balanceCooldown = new Set();
 
 const bananoUtils = require("./utils/bananoUtils.js");
 const blackjack = require("./utils/blackjack.js");
@@ -85,6 +86,8 @@ client.on("messageCreate", async (message) => {
 
     if (["balance", "bal", "wallet"].includes(args[0])) {
         let lookupUser = message.mentions.users.first() || message.author;
+        if (balanceCooldown.has(lookupUser.id)) return;
+        balanceCooldown.add(lookupUser.id);
         const userPublicKey = await bananoUtils.getPublicKey(lookupUser.id);
         let accountBalance = await bananoUtils.accountBalance(userPublicKey);
         if (BigNumber(accountBalance.pending).isGreaterThan(BigNumber(0)) || BigNumber(accountBalance.balance).isGreaterThan(BigNumber(0))) {
@@ -102,6 +105,9 @@ client.on("messageCreate", async (message) => {
                 console.log(`Added ${(Math.floor(BigNumber(accountBalance.pending).plus(BigNumber(accountBalance.balance)).div(BigNumber("1e29")).toNumber() * 1e2) / 1e2).toFixed(2)} BAN to ${lookupUser.id}`);    
             };
         };
+        setTimeout(() => {
+            balanceCooldown.delete(lookupUser.id);
+        }, 5000);
         return message.reply({ embeds: [ defaultEmbed().setDescription(`${lookupUser.id == message.author.id ? "You have" : lookupUser + " has"} **${(Math.floor(dbTools.getUserInfo(lookupUser.id)["balance"] * 1e2) / 1e2).toFixed(2)} BAN**`) ] });
     }
 
