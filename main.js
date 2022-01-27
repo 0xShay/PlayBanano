@@ -82,10 +82,6 @@ client.on("messageCreate", async (message) => {
         setTimeout(() => commandCooldown.delete(message.author.id), config["command-cooldown"]);
     };
 
-    console.log(message.channel.permissionsFor(message.guild.me).toArray());
-    if (!member.permissions.has(Discord.Permissions.FLAGS.SEND_MESSAGES)) return;
-    if (!message.channel.permissionsFor(message.guild.me).toArray().includes("SEND_MESSAGES")) return;
-
     console.log("< " + message.guild.name + " > [ " + (new Date()).toLocaleTimeString() + " ]", message.author.tag, args);
 
     if (["help"].includes(args[0])) {
