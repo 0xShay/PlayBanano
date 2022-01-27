@@ -78,23 +78,24 @@ client.on("messageCreate", async (message) => {
     }
 
     if (["balance", "bal", "wallet"].includes(args[0])) {
-        const userPublicKey = await bananoUtils.getPublicKey(message.author.id);
+        let lookupUser = message.mentions.users.first() || message.author;
+        const userPublicKey = await bananoUtils.getPublicKey(lookupUser.id);
         let accountBalance = await bananoUtils.accountBalance(userPublicKey);
         if (BigNumber(accountBalance.pending).isGreaterThan(BigNumber(0)) || BigNumber(accountBalance.balance).isGreaterThan(BigNumber(0))) {
-            await bananoUtils.receivePending(message.author.id);
+            await bananoUtils.receivePending(lookupUser.id);
             if (!BigNumber(Math.floor(BigNumber(accountBalance.pending).plus(BigNumber(accountBalance.balance)).div(BigNumber("1e29")).toNumber() * 1e2) / 1e2).times(BigNumber("1e29")).isEqualTo(BigNumber(0))) {
                 accountBalance = await bananoUtils.accountBalance(userPublicKey);
-                await bananoUtils.sendBanID(0, accountBalance.balance, message.author.id);
-                await dbTools.addBalance(message.author.id, Math.floor(BigNumber(accountBalance.balance).div(BigNumber("1e29")).toNumber() * 1e2) / 1e2);
+                await bananoUtils.sendBanID(0, accountBalance.balance, lookupUser.id);
+                await dbTools.addBalance(lookupUser.id, Math.floor(BigNumber(accountBalance.balance).div(BigNumber("1e29")).toNumber() * 1e2) / 1e2);
                 try {
                     await bananoUtils.receivePending(0);
                 } catch(err) {
                     console.error(err);
                 };
-                console.log(`Added ${(Math.floor(BigNumber(accountBalance.pending).plus(BigNumber(accountBalance.balance)).div(BigNumber("1e29")).toNumber() * 1e2) / 1e2).toFixed(2)} BAN to ${message.author.id}`);    
+                console.log(`Added ${(Math.floor(BigNumber(accountBalance.pending).plus(BigNumber(accountBalance.balance)).div(BigNumber("1e29")).toNumber() * 1e2) / 1e2).toFixed(2)} BAN to ${lookupUser.id}`);    
             };
         };
-        return message.reply({ embeds: [ defaultEmbed().setDescription(`You have **${(Math.floor(dbTools.getUserInfo(message.author.id)["balance"] * 1e2) / 1e2).toFixed(2)} BAN**`) ] });
+        return message.reply({ embeds: [ defaultEmbed().setDescription(`${lookupUser.id == message.author.id ? "You have" : lookupUser + " has"} **${(Math.floor(dbTools.getUserInfo(lookupUser.id)["balance"] * 1e2) / 1e2).toFixed(2)} BAN**`) ] });
     }
 
     if (["stats", "info", "statistics", "lookup", "user"].includes(args[0])) {
@@ -179,7 +180,6 @@ client.on("messageCreate", async (message) => {
         };
         if (!recvUser || !payAmount) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [@user]\``);
         payAmount = Math.floor(payAmount * 1e2) / 1e2;
-        if (payAmount < config["min-bet"]) return message.replyEmbed(`Minimum payment: **${config["min-pay"]} BAN**`);
         await dbTools.addBalance(recvUser.id, payAmount);
         return message.replyEmbed(`Sent **${payAmount.toFixed(2)} BAN** to ${recvUser}`);
     }
