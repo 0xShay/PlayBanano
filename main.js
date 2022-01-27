@@ -36,6 +36,17 @@ const generateRandom = async () => {
     return ret / 100000;
 };
 
+let maxBet;
+
+const updateMaxBet = async () => {
+    const housePublicKey = await bananoUtils.getPublicKey(0);
+    let houseBalance = await bananoUtils.accountBalance(housePublicKey);
+    maxBet = Math.floor(BigNumber(houseBalance.balance).div(BigNumber("1e29")).times(config["max-bet-percentage"]).toNumber() * 1e2) / 1e2;
+};
+
+updateMaxBet();
+setInterval(updateMaxBet, 30000);
+
 const client = new Discord.Client({
     intents: [
         Discord.Intents.FLAGS.GUILD_MESSAGES,
@@ -80,8 +91,10 @@ client.on("messageCreate", async (message) => {
                 `\`${config["prefix"]}coinflip [amount] [heads/tails]\` - Bet [amount] BAN on a coinflip's outcome`,
                 `\`${config["prefix"]}roulette [amount] [odd/even/low/high/red/black/#]\` - Bet [amount] BAN on a roulette's outcome`,
                 `\`${config["prefix"]}blackjack [amount]\` - Start a game of blackjack`,
+                `\`${config["prefix"]}leaderboard [wagered/won/lost]\` - Check user leaderboards`,
                 ``,
                 `*Minimum bet:* \`${config["min-bet"]} BAN\``,
+                `*Maximum bet:* \`${maxBet} BAN\``,
                 `*Minimum payment/withdrawal:* \`${config["min-pay"]} BAN\``,
                 `*House edge:* \`${config["house-edge"] * 100}%\``
             ].join(`\n`))
@@ -189,7 +202,7 @@ client.on("messageCreate", async (message) => {
         } else { recvUser = message.mentions.users.first(); };
         if (!recvUser || !payAmount) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [@user]\``);
         payAmount = Math.floor(payAmount * 1e2) / 1e2;
-        if (payAmount < config["min-bet"]) return message.replyEmbed(`Minimum payment: **${config["min-pay"]} BAN**`);
+        if (payAmount < config["min-pay"]) return message.replyEmbed(`Minimum payment: **${config["min-pay"]} BAN**`);
         if (recvUser.id == message.author.id) return message.replyEmbed(`You can't tip yourself!`);
         if (dbTools.getUserInfo(message.author.id)["balance"] < payAmount) return message.replyEmbed("You don't have enough Banano to do that.");
         await dbTools.transferBalance(message.author.id, recvUser.id, payAmount);
@@ -218,8 +231,11 @@ client.on("messageCreate", async (message) => {
         if (!payAmount || !withdrawAddress) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [address]\``);
         if (!withdrawAddress.startsWith("ban_")) return message.replyEmbed("Invalid BAN address");
         payAmount = Math.floor(payAmount * 1e2) / 1e2;
-        if (payAmount < config["min-bet"]) return message.replyEmbed(`Minimum withdrawal: **${config["min-pay"]} BAN**`);
+        if (payAmount < config["min-pay"]) return message.replyEmbed(`Minimum withdrawal: **${config["min-pay"]} BAN**`);
         if (dbTools.getUserInfo(message.author.id)["balance"] < payAmount) return message.replyEmbed("You don't have enough Banano to do that.");
+        const housePublicKey = await bananoUtils.getPublicKey(0);
+        let houseBalance = await bananoUtils.accountBalance(housePublicKey);
+        if (BigNumber(payAmount).times(BigNumber("1e29")).isGreaterThan(houseBalance.balance)) return message.replyEmbed("An error occured. Try again later.");
         await dbTools.addBalance(message.author.id, 0-payAmount);
         let txHash = await bananoUtils.sendBan(withdrawAddress, BigNumber(payAmount).times(BigNumber("1e29")).toNumber());
         return message.replyEmbed(`Withdrawn **${payAmount.toFixed(2)} BAN** to ${withdrawAddress}\n\n\`${txHash}\`\nhttps://creeper.banano.cc/explorer/block/${txHash}`);
@@ -262,11 +278,13 @@ client.on("messageCreate", async (message) => {
     }
 
     if (["coinflip", "cf", "coin", "flip"].includes(args[0])) {
+        if (maxBet < config["min-bet"]) return message.replyEmbed(`Betting is currently disabled.`);
         let betAmount = parseFloat(args[1]);
         let betOn = ["heads", "tails", "h", "t"].includes(args[2]) ? args[2] : false;
         if (!betAmount || !betOn) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [heads/tails]\``);
         betAmount = Math.floor(betAmount * 1e2) / 1e2;
         if (betAmount < config["min-bet"]) return message.replyEmbed(`Minimum bet: **${config["min-bet"]} BAN**`);
+        if (betAmount > maxBet) return message.replyEmbed(`Maximum bet: **${maxBet} BAN**`);
         if (betOn == "h") betOn = "heads";
         if (betOn == "t") betOn = "tails";
         if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.replyEmbed("You don't have enough Banano to do that.");
@@ -283,11 +301,13 @@ client.on("messageCreate", async (message) => {
     }
 
     if (["roulette", "roul", "r"].includes(args[0])) {
+        if (maxBet < config["min-bet"]) return message.replyEmbed(`Betting is currently disabled.`);
         let betAmount = parseFloat(args[1]);
         let betOn = (["odd", "even", "low", "high", "red", "black"].includes(args[2]) || (parseInt(args[2]) && parseInt(args[2]) >= 0 && parseInt(args[2]) <= 36)) ? args[2] : false;
         if (!betAmount || !betOn) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [odd/even/low/high/red/black/#]\``);
         betAmount = Math.floor(betAmount * 1e2) / 1e2;
         if (betAmount < config["min-bet"]) return message.replyEmbed(`Minimum bet: **${config["min-bet"]} BAN**`);
+        if (betAmount > maxBet) return message.replyEmbed(`Maximum bet: **${maxBet} BAN**`);
         if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.replyEmbed("You don't have enough Banano to do that.");
         await dbTools.addBalance(message.author.id, 0-betAmount);
         await axios.get(`https://www.roulette.rip/api/play?bet=${betOn}&wager=${betAmount.toFixed(2)}`)
