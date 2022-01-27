@@ -39,9 +39,12 @@ const generateRandom = async () => {
 let maxBet;
 
 const updateMaxBet = async () => {
+    let maxBetTemp = 0;
     const housePublicKey = await bananoUtils.getPublicKey(0);
     let houseBalance = await bananoUtils.accountBalance(housePublicKey);
-    maxBet = Math.floor(BigNumber(houseBalance.balance).div(BigNumber("1e29")).times(config["max-bet-percentage"]).toNumber() * 1e2) / 1e2;
+    maxBetTemp = Math.floor(BigNumber(houseBalance.balance).div(BigNumber("1e29")).times(config["max-bet-percentage"]).toNumber() * 1e2) / 1e2;
+    maxBetTemp > config["max-bet"] ? config["max-bet"] : maxBetTemp;
+    maxBet = maxBetTemp;
 };
 
 updateMaxBet();
