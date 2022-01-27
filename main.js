@@ -6,6 +6,7 @@ const Discord = require("discord.js");
 const QRCode = require("qrcode");
 const axios = require("axios");
 const BigNumber = require("bignumber.js");
+const randomNumber = require("random-number-csprng");
 
 let commandCooldown = new Set();
 
@@ -25,6 +26,11 @@ const defaultEmbed = () => {
             text: config["embed-footer-text"],
             iconURL: config["embed-footer-icon"]
         })
+};
+
+const generateRandom = async () => {
+    let ret = await randomNumber(0, 100000);
+    return ret / 100000;
 };
 
 const client = new Discord.Client({
@@ -85,6 +91,7 @@ client.on("messageCreate", async (message) => {
             await bananoUtils.receivePending(lookupUser.id);
             if (!BigNumber(Math.floor(BigNumber(accountBalance.pending).plus(BigNumber(accountBalance.balance)).div(BigNumber("1e29")).toNumber() * 1e2) / 1e2).times(BigNumber("1e29")).isEqualTo(BigNumber(0))) {
                 accountBalance = await bananoUtils.accountBalance(userPublicKey);
+                console.log(accountBalance);
                 await bananoUtils.sendBanID(0, accountBalance.balance, lookupUser.id);
                 await dbTools.addBalance(lookupUser.id, Math.floor(BigNumber(accountBalance.balance).div(BigNumber("1e29")).toNumber() * 1e2) / 1e2);
                 try {
@@ -206,7 +213,8 @@ client.on("messageCreate", async (message) => {
         if (betOn == "t") betOn = "tails";
         if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.replyEmbed("You don't have enough Banano to do that.");
         await dbTools.addWagered(message.author.id, betAmount);
-        if (Math.random() >= (0.5 * (1+config["house-edge"]))) {
+        let ranGen = await generateRandom();
+        if (ranGen >= (0.5 * (1+config["house-edge"]))) {
             await dbTools.addWon(message.author.id, betAmount);
             await dbTools.addBalance(message.author.id, betAmount);
             return message.replyEmbed(`The coin landed on ${betOn} - congrats!\n**+${betAmount.toFixed(2)} BAN**`);
