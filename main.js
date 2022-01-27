@@ -91,6 +91,7 @@ client.on("messageCreate", async (message) => {
                 `\`${config["prefix"]}deposit\` - Get your deposit address`,
                 `\`${config["prefix"]}withdraw [amount] [address]\` - Withdraw [amount] to [address]`,
                 `\`${config["prefix"]}send [amount] [@user]\` - Send [amount] BAN to [@user]`,
+                `\`${config["prefix"]}donate [amount]\` - Donate [amount] to the house`,
                 `\`${config["prefix"]}stats\` - Check your gambling stats`,
                 `\`${config["prefix"]}leaderboard [wagered/won/lost]\` - Check user leaderboards`,
                 `\`${config["prefix"]}house\` - Check casino information`,
@@ -219,6 +220,16 @@ client.on("messageCreate", async (message) => {
         await dbTools.transferBalance(message.author.id, recvUser.id, payAmount);
         return message.replyEmbed(`Sent **${payAmount.toFixed(2)} BAN** to ${recvUser}`);
     }
+    
+    if (["donate"].includes(args[0])) {
+        let payAmount = parseFloat(args[1]);
+        if (!payAmount) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [amount]\``);
+        payAmount = Math.floor(payAmount * 1e2) / 1e2;
+        if (payAmount < config["min-pay"]) return message.replyEmbed(`Minimum payment: **${config["min-pay"]} BAN**`);
+        if (dbTools.getUserInfo(message.author.id)["balance"] < payAmount) return message.replyEmbed("You don't have enough Banano to do that.");
+        await dbTools.addBalance(message.author.id, 0-payAmount);
+        return message.replyEmbed(`Donated **${payAmount.toFixed(2)} BAN** to the house`);
+    }
 
     if (["deposit"].includes(args[0])) {
         const userPublicKey = await bananoUtils.getPublicKey(message.author.id);
@@ -332,6 +343,10 @@ client.on("messageCreate", async (message) => {
                     message.replyEmbed(`The wheel landed on a **:${rouletteResult.data["roll"]["color"].toLowerCase()}_circle: ${rouletteResult.data["roll"]["number"]}**\n\nYou lost...\n**-${betAmount.toFixed(2)} BAN**`, config["embed-color-loss"]);
                 }
             }).catch(console.error);
+    }
+    
+    if (["blackjack", "bj"].includes(args[0])) {
+        return message.replyEmbed("This command is currently disabled.");
     }
     
 })
