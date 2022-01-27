@@ -144,7 +144,7 @@ client.on("messageCreate", async (message) => {
     
     if (["leaderboard", "lb", "top"].includes(args[0])) {
         const lbType = args[1];
-        if (!["wagered", "won", "lost"].includes(lbType)) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [wagered/won/lost]\``);
+        if (!["wagered", "won", "lost", "balance"].includes(lbType)) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [wagered/won/lost]\``);
         let dbJSONraw = dbTools.getJSON();
         const lbEmbed = defaultEmbed()
             .setTitle(`Leaderboard | Total ${lbType}`)
