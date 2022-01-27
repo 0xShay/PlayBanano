@@ -43,8 +43,7 @@ const updateMaxBet = async () => {
     const housePublicKey = await bananoUtils.getPublicKey(0);
     let houseBalance = await bananoUtils.accountBalance(housePublicKey);
     maxBetTemp = Math.floor(BigNumber(houseBalance.balance).div(BigNumber("1e29")).times(config["max-bet-percentage"]).toNumber() * 1e2) / 1e2;
-    maxBetTemp > config["max-bet"] ? config["max-bet"] : maxBetTemp;
-    maxBet = maxBetTemp;
+    maxBet = maxBetTemp > config["max-bet"] ? config["max-bet"] : maxBetTemp;
 };
 
 updateMaxBet();
