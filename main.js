@@ -82,7 +82,7 @@ client.on("messageCreate", async (message) => {
         setTimeout(() => commandCooldown.delete(message.author.id), config["command-cooldown"]);
     };
 
-    console.log("[ " + (new Date()).toLocaleTimeString() + " ]", message.author.tag, args);
+    console.log("< " + message.guild.name + " > [ " + (new Date()).toLocaleTimeString() + " ]", message.author.tag, args);
 
     if (["help"].includes(args[0])) {
         return message.reply({ embeds: [
