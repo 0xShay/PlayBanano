@@ -83,20 +83,19 @@ client.on("messageCreate", async (message) => {
 
     if (["help"].includes(args[0])) {
         return message.reply({ embeds: [
-            defaultEmbed().setTitle("Commands list").setDescription([
+            defaultEmbed().setTitle("Commands list")
+            .addField("General", [
                 `\`${config["prefix"]}balance\` - Check your balance`,
                 `\`${config["prefix"]}deposit\` - Get your deposit address`,
                 `\`${config["prefix"]}withdraw [amount] [address]\` - Withdraw [amount] to [address]`,
                 `\`${config["prefix"]}send [amount] [@user]\` - Send [amount] BAN to [@user]`,
-                `\`${config["prefix"]}coinflip [amount] [heads/tails]\` - Bet [amount] BAN on a coinflip's outcome`,
-                `\`${config["prefix"]}roulette [amount] [odd/even/low/high/red/black/#]\` - Bet [amount] BAN on a roulette's outcome`,
-                `\`${config["prefix"]}blackjack [amount]\` - Start a game of blackjack`,
+                `\`${config["prefix"]}stats\` - Check your gambling stats`,
                 `\`${config["prefix"]}leaderboard [wagered/won/lost]\` - Check user leaderboards`,
-                ``,
-                `*Minimum bet:* \`${config["min-bet"]} BAN\``,
-                `*Maximum bet:* \`${maxBet} BAN\``,
-                `*Minimum payment/withdrawal:* \`${config["min-pay"]} BAN\``,
-                `*House edge:* \`${config["house-edge"] * 100}%\``
+                `\`${config["prefix"]}house\` - Check casino information`,
+            ].join(`\n`))
+            .addField("Casino", [
+                `\`${config["prefix"]}coinflip [amount] [heads/tails]\` - Bet [amount] BAN on a coinflip's outcome`,
+                `\`${config["prefix"]}roulette [amount] [odd/even/low/high/red/black/#]\` - Bet [amount] BAN on a roulette's outcome`
             ].join(`\n`))
         ]});
     }
@@ -189,7 +188,10 @@ client.on("messageCreate", async (message) => {
             defaultEmbed()
                 .addField("Total user funds", `${dbTotalBalance.toFixed(2)} BAN`, true)
                 .addField("House balance", `${(BigNumber(houseBalance.balance).div(BigNumber("1e29")) - dbTotalBalance).toFixed(2)} BAN`, true)
-                .addField("Casino funds", `${BigNumber(houseBalance.balance).div(BigNumber("1e29")).toFixed(2)} BAN`)
+                .addField("Casino funds", `${BigNumber(houseBalance.balance).div(BigNumber("1e29")).toFixed(2)} BAN`, true)
+                .addField("Minimum bet", `${config["min-bet"].toFixed(2)} BAN`, true)
+                .addField("Maximum bet", `${maxBet.toFixed(2)} BAN`, true)
+                .addField("House edge", `${config["house-edge"] * 100}%`, true)
         ]});
     }
 
@@ -322,87 +324,7 @@ client.on("messageCreate", async (message) => {
                 }
             }).catch(console.error);
     }
-
-    if (["blackjack", "bj"].includes(args[0])) {
-
-        return message.replyEmbed("Command is down for maintenance.");
-
-        let betAmount = parseFloat(args[1]);
-        if (!betAmount) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [amount]\``)
-        betAmount = Math.floor(betAmount * 1e2) / 1e2;
-
-        if (betAmount < config["min-bet"]) return message.replyEmbed(`Minimum bet: **${config["min-bet"]} BAN**`);
-
-        if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.replyEmbed("You don't have enough Banano to do that.");
-
-        await dbTools.addBalance(message.author.id, 0-betAmount);
-        
-        let gameObject = blackjack.startGame();
-
-        let gameMsg = await message.reply({
-            embeds: [
-                new Discord.MessageEmbed().setDescription(blackjack.generateEmbedDesc(gameObject, false)).setThumbnail(`https://imgur.com/dkoXQzs.png`)
-            ]
-        });
-        
-        const filter = (reaction, user) => {
-            return [`🟢`, `🔴`].includes(reaction.emoji.name) && user.id == message.author.id;
-        };
-
-        await gameMsg.react(`🟢`);
-        await gameMsg.react(`🔴`);
-
-        let finishedLoop = false;
-
-        while (finishedLoop == false) {
-
-            await gameMsg.awaitReactions({ filter, max: 1, time: 60000, errors: ['time'] })
-                .then(async collected => {
-        
-                    const reaction = collected.first();
-
-                    let gameEmbed = new Discord.MessageEmbed().setThumbnail(`https://imgur.com/dkoXQzs.png`);
-
-                    reaction.users.remove(message.author.id);
-        
-                    if (reaction.emoji.name === `🟢`) {
-                        // hit
-                        gameObject = blackjack.playerHit(gameObject);
-                        gameEmbed.setDescription(blackjack.generateEmbedDesc(gameObject, false));
-                        if (blackjack.calculateValue(gameObject.playerHand) >= 21) {
-                        // if (blackjack.calculateValue(gameObject.dealerHand) >= 21 || blackjack.calculateValue(gameObject.playerHand) >= 21) {
-                            gameEmbed.setDescription(blackjack.generateEmbedDesc(gameObject, true, betAmount));
-                            let didPlayerWin = blackjack.playerWin(blackjack.calculateValue(gameObject.playerHand), blackjack.calculateValue(gameObject.dealerHand));    
-                            if (didPlayerWin == 1) { await dbTools.addBalance(message.author.id, betAmount * 2); } 
-                            else if (didPlayerWin == 0) { await dbTools.addBalance(message.author.id, betAmount); }
-                            else { /* player lost */ }
-                            finishedLoop = true;
-                            gameMsg.reactions.removeAll();
-                        }
-                    } else {
-                        // stand
-                        gameObject = blackjack.playerStand(gameObject);
-                        gameEmbed.setDescription(blackjack.generateEmbedDesc(gameObject, true, betAmount));
-                        let didPlayerWin = blackjack.playerWin(blackjack.calculateValue(gameObject.playerHand), blackjack.calculateValue(gameObject.dealerHand));    
-                        if (didPlayerWin == 1) { await dbTools.addBalance(message.author.id, betAmount * 2); } 
-                        else if (didPlayerWin == 0) { await dbTools.addBalance(message.author.id, betAmount); }
-                        else { /* player lost */ }
-                        finishedLoop = true;
-                        gameMsg.reactions.removeAll();
-                    }
-        
-                    await gameMsg.edit({ embeds: [ gameEmbed ] })
-        
-                })
-                .catch(async collected => {
-                    let gameEmbed = new Discord.MessageEmbed().setDescription(`⏰ You took too long to react and lost your bet.`);
-                    await gameMsg.edit({ embeds: [ gameEmbed ] })
-                });
-
-        };
-
-    }
-
+    
 })
 
 client.login(process.env["BOT_TOKEN"]);
