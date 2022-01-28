@@ -67,6 +67,8 @@ client.on("messageCreate", async (message) => {
 
     if (disabled && !config["admin-users"].includes(message.author.id)) return;
 
+    if (!message.channel.permissionsFor(message.guild.me).toArray().includes("SEND_MESSAGES")) return;
+
     message.replyEmbed = (desc, color=config["embed-color"]) => {
         message.reply({ embeds: [ defaultEmbed().setDescription(desc).setColor(color) ] });
     };
