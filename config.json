@@ -60,5 +60,11 @@
             "top": "<:blankbacktop:714565166070759454>",
             "bottom": "<:blankbackbot:714565093798576455>"
         }
+    },
+    "leaderboard-titles": {
+        "wagered": "Leaderboard | Total wagered",
+        "won": "Leaderboard | Net profit (P/L)",
+        "lost": "Leaderboard | Net loss (P/L)",
+        "balance": "Leaderboard | Total balance",
     }
 }

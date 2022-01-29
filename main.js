@@ -148,10 +148,11 @@ client.on("messageCreate", async (message) => {
     
     if (["leaderboard", "lb", "top"].includes(args[0])) {
         const lbType = args[1];
-        if (!["wagered", "won", "lost", "balance"].includes(lbType)) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [wagered/won/lost]\``);
+        if (!["wagered", "won", "lost", "balance"].includes(lbType)) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [wagered/won/lost/net]\``);
+
         let dbJSONraw = dbTools.getJSON();
         const lbEmbed = defaultEmbed()
-            .setTitle(`Leaderboard | Total ${lbType}`)
+            .setTitle(config.lbTitles[lbType])
         
         let dbJSON = [];
         Object.keys(dbJSONraw).forEach(uid => {
@@ -167,25 +168,25 @@ client.on("messageCreate", async (message) => {
                     lbEmbed.addField(`${i + 1}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${(dbJSON[i]["totalWon"] + dbJSON[i]["totalLost"]).toFixed(2)} BAN`);
                 }
                 break;
-            case "won":
-                dbJSON = dbJSON.sort((a, b) => b["totalWon"] - a["totalWon"]);
-                for (let i = 0; i < (dbJSON.length < 10 ? dbJSON.length : 10); i++) {
-                    let fetchedUser = client.users.cache.get(dbJSON[i]["uid"]);
-                    lbEmbed.addField(`${i + 1}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${dbJSON[i]["totalWon"].toFixed(2)} BAN`);
-                }
-                break;
-            case "lost":
-                dbJSON = dbJSON.sort((a, b) => b["totalLost"] - a["totalLost"]);
-                for (let i = 0; i < (dbJSON.length < 10 ? dbJSON.length : 10); i++) {
-                    let fetchedUser = client.users.cache.get(dbJSON[i]["uid"]);
-                    lbEmbed.addField(`${i + 1}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${dbJSON[i]["totalLost"].toFixed(2)} BAN`);
-                }
-                break;
             case "balance":
                 dbJSON = dbJSON.sort((a, b) => b["balance"] - a["balance"]);
                 for (let i = 0; i < (dbJSON.length < 10 ? dbJSON.length : 10); i++) {
                     let fetchedUser = client.users.cache.get(dbJSON[i]["uid"]);
                     lbEmbed.addField(`${i + 1}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${dbJSON[i]["balance"].toFixed(2)} BAN`);
+                }
+                break;
+            case "won":
+                dbJSON = dbJSON.sort((a, b) => (b["totalWon"] - b["totalLost"]) - (a["totalWon"] - a["totalLost"]));
+                for (let i = 0; i < (dbJSON.length < 10 ? dbJSON.length : 10); i++) {
+                    let fetchedUser = client.users.cache.get(dbJSON[i]["uid"]);
+                    lbEmbed.addField(`${i + 1}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${(dbJSON[i]["totalWon"] - dbJSON[i]["totalLost"]).toFixed(2)} BAN`);
+                }
+                break;
+            case "lost":
+                dbJSON = dbJSON.sort((a, b) => (a["totalWon"] - a["totalLost"]) - (b["totalWon"] - b["totalLost"]));
+                for (let i = 0; i < (dbJSON.length < 10 ? dbJSON.length : 10); i++) {
+                    let fetchedUser = client.users.cache.get(dbJSON[i]["uid"]);
+                    lbEmbed.addField(`${dbJSON.length - i}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${(dbJSON[i]["totalWon"] - dbJSON[i]["totalLost"]).toFixed(2)} BAN`);
                 }
                 break;
         }
@@ -337,13 +338,13 @@ client.on("messageCreate", async (message) => {
         await dbTools.addBalance(message.author.id, 0-betAmount);
         const rouletteResult = await roulette.getOutcome(betOn, betAmount);
         if (rouletteResult["bet"]["win"] && rouletteResult["roll"]["number"] != 0) {
-                await dbTools.addWon(message.author.id, parseFloat(rouletteResult["bet"]["payout"]) - betAmount);
-                await dbTools.addBalance(message.author.id, parseFloat(rouletteResult["bet"]["payout"]));
-                message.replyEmbed(`The wheel landed on a **:${rouletteResult["roll"]["color"].toLowerCase()}_circle: ${rouletteResult["roll"]["number"]}**\n\nCongrats, you won!\n**+${(parseFloat(rouletteResult["bet"]["payout"]) - betAmount).toFixed(2)} BAN**`, config["embed-color-win"]);
-            } else {
-                await dbTools.addLost(message.author.id, betAmount);
-                message.replyEmbed(`The wheel landed on a **:${rouletteResult["roll"]["color"].toLowerCase()}_circle: ${rouletteResult["roll"]["number"]}**\n\nYou lost...\n**-${betAmount.toFixed(2)} BAN**`, config["embed-color-loss"]);
-            }
+            await dbTools.addWon(message.author.id, parseFloat(rouletteResult["bet"]["payout"]) - betAmount);
+            await dbTools.addBalance(message.author.id, parseFloat(rouletteResult["bet"]["payout"]));
+            message.replyEmbed(`The wheel landed on a **:${rouletteResult["roll"]["color"].toLowerCase()}_circle: ${rouletteResult["roll"]["number"]}**\n\nCongrats, you won!\n**+${(parseFloat(rouletteResult["bet"]["payout"]) - betAmount).toFixed(2)} BAN**`, config["embed-color-win"]);
+        } else {
+            await dbTools.addLost(message.author.id, betAmount);
+            message.replyEmbed(`The wheel landed on a **:${rouletteResult["roll"]["color"].toLowerCase()}_circle: ${rouletteResult["roll"]["number"]}**\n\nYou lost...\n**-${betAmount.toFixed(2)} BAN**`, config["embed-color-loss"]);
+        }
     }
     
     if (["blackjack", "bj"].includes(args[0])) {
