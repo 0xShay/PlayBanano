@@ -15,6 +15,7 @@ let disabled = false;
 
 const bananoUtils = require("./utils/bananoUtils.js");
 const blackjack = require("./utils/blackjack.js");
+const roulette = require("./utils/roulette.js");
 const dbTools = require("./utils/dbTools.js");
 
 const db_users = new Database({
@@ -151,7 +152,6 @@ client.on("messageCreate", async (message) => {
         let dbJSONraw = dbTools.getJSON();
         const lbEmbed = defaultEmbed()
             .setTitle(`Leaderboard | Total ${lbType}`)
-            // .addField("Losses", `-${userInfo["totalLost"].toFixed(2)} BAN`, true)
         
         let dbJSON = [];
         Object.keys(dbJSONraw).forEach(uid => {
@@ -328,24 +328,22 @@ client.on("messageCreate", async (message) => {
     if (["roulette", "roul", "r"].includes(args[0])) {
         if (maxBet < config["min-bet"]) return message.replyEmbed(`Betting is currently disabled.`);
         let betAmount = parseFloat(args[1]);
-        let betOn = (["odd", "even", "low", "high", "red", "black"].includes(args[2]) || (parseInt(args[2]) && parseInt(args[2]) >= 0 && parseInt(args[2]) <= 36)) ? args[2] : false;
-        if (!betAmount || !betOn) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [odd/even/low/high/red/black/#]\``);
+        let betOn = (["odd", "even", "low", "high", "red", "black"].includes(args[2]) || (parseInt(args[2]) && parseInt(args[2]) > 0 && parseInt(args[2]) <= 36)) ? args[2] : false;
+        if (!betAmount || !betOn) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [odd/even/low/high/red/black/1-36]\``);
         betAmount = Math.floor(betAmount * 1e2) / 1e2;
         if (betAmount < config["min-bet"]) return message.replyEmbed(`Minimum bet: **${config["min-bet"]} BAN**`);
         if (betAmount > maxBet) return message.replyEmbed(`Maximum bet: **${maxBet} BAN**`);
         if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.replyEmbed("You don't have enough Banano to do that.");
         await dbTools.addBalance(message.author.id, 0-betAmount);
-        await axios.get(`https://www.roulette.rip/api/play?bet=${betOn}&wager=${betAmount.toFixed(2)}`)
-        .then(async rouletteResult => {
-            if (rouletteResult.data["bet"]["win"] && rouletteResult.data["roll"]["number"] != 0) {
-                    await dbTools.addWon(message.author.id, parseFloat(rouletteResult.data["bet"]["payout"]) - betAmount);
-                    await dbTools.addBalance(message.author.id, parseFloat(rouletteResult.data["bet"]["payout"]));
-                    message.replyEmbed(`The wheel landed on a **:${rouletteResult.data["roll"]["color"].toLowerCase()}_circle: ${rouletteResult.data["roll"]["number"]}**\n\nCongrats, you won!\n**+${(parseFloat(rouletteResult.data["bet"]["payout"]) - betAmount).toFixed(2)} BAN**`, config["embed-color-win"]);
-                } else {
-                    await dbTools.addLost(message.author.id, betAmount);
-                    message.replyEmbed(`The wheel landed on a **:${rouletteResult.data["roll"]["color"].toLowerCase()}_circle: ${rouletteResult.data["roll"]["number"]}**\n\nYou lost...\n**-${betAmount.toFixed(2)} BAN**`, config["embed-color-loss"]);
-                }
-            }).catch(console.error);
+        const rouletteResult = await roulette.getOutcome(betOn, betAmount);
+        if (rouletteResult["bet"]["win"] && rouletteResult["roll"]["number"] != 0) {
+                await dbTools.addWon(message.author.id, parseFloat(rouletteResult["bet"]["payout"]) - betAmount);
+                await dbTools.addBalance(message.author.id, parseFloat(rouletteResult["bet"]["payout"]));
+                message.replyEmbed(`The wheel landed on a **:${rouletteResult["roll"]["color"].toLowerCase()}_circle: ${rouletteResult["roll"]["number"]}**\n\nCongrats, you won!\n**+${(parseFloat(rouletteResult["bet"]["payout"]) - betAmount).toFixed(2)} BAN**`, config["embed-color-win"]);
+            } else {
+                await dbTools.addLost(message.author.id, betAmount);
+                message.replyEmbed(`The wheel landed on a **:${rouletteResult["roll"]["color"].toLowerCase()}_circle: ${rouletteResult["roll"]["number"]}**\n\nYou lost...\n**-${betAmount.toFixed(2)} BAN**`, config["embed-color-loss"]);
+            }
     }
     
     if (["blackjack", "bj"].includes(args[0])) {
