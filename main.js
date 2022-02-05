@@ -329,7 +329,9 @@ client.on("messageCreate", async (message) => {
     if (["roulette", "roul", "r"].includes(args[0])) {
         if (maxBet < config["min-bet"]) return message.replyEmbed(`Betting is currently disabled.`);
         let betAmount = parseFloat(args[1]);
-        let betOn = (["odd", "even", "low", "high", "red", "black"].includes(args[2]) || (parseInt(args[2]) && parseInt(args[2]) > 0 && parseInt(args[2]) <= 36)) ? args[2] : false;
+        let betOn = false;
+        if (parseInt(args[2]) && (parseInt(args[2]) == args[2]) && (parseInt(args[2]) > 0 && parseInt(args[2]) <= 36)) betOn = parseInt(args[2]);
+        if (["odd", "even", "low", "high", "red", "black"].includes(args[2])) betOn = args[2];
         if (!betAmount || !betOn) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [amount] [odd/even/low/high/red/black/1-36]\``);
         betAmount = Math.floor(betAmount * 1e2) / 1e2;
         if (betAmount < config["min-bet"]) return message.replyEmbed(`Minimum bet: **${config["min-bet"]} BAN**`);
