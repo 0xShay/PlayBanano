@@ -9,7 +9,9 @@ exports.getUserInfo = function(uid) {
     return {
         "balance": userInfo["balance"] || 0,
         "totalWon": userInfo["totalWon"] || 0,
-        "totalLost": userInfo["totalLost"] || 0
+        "totalLost": userInfo["totalLost"] || 0,
+        "totalWagered": userInfo["totalWagered"] || 0,
+        "weeklyWagered": userInfo["weeklyWagered"] || 0
     };
 }
 
@@ -52,6 +54,24 @@ exports.addLost = function(uid, value) {
     return this.getUserInfo(uid);
 }
 
+exports.addWagered = function(uid, value) {
+    let userInfo = this.getUserInfo(uid);
+    userInfo["totalWagered"] += value;
+    userInfo["weeklyWagered"] += value;
+    db.set(uid, userInfo);
+    return this.getUserInfo(uid);
+}
+
 exports.getJSON = function(uid, value) {
     return JSON.parse(db.toJSON());
+}
+
+exports.resetWeekly = function() {
+    let fullDB = JSON.parse(db.toJSON());
+    Object.keys(fullDB).forEach(uid => {
+        let userInfo = fullDB[uid];
+        // let userInfo = dbTools.getUserInfo(uid);
+        userInfo["weeklyWagered"] = 0;
+        db.set(uid, userInfo);
+    });
 }

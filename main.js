@@ -6,6 +6,7 @@ const Discord = require("discord.js");
 const QRCode = require("qrcode");
 const axios = require("axios");
 const BigNumber = require("bignumber.js");
+const schedule = require("node-schedule");
 const randomNumber = require("random-number-csprng");
 
 let commandCooldown = new Set();
@@ -49,6 +50,11 @@ const updateMaxBet = async () => {
 
 updateMaxBet();
 setInterval(updateMaxBet, 30000);
+
+const resetWeekly = schedule.scheduleJob('00 59 23 * * 0', function(){
+    dbTools.resetWeekly();
+    console.log("Weekly stats reset");
+});
 
 const client = new Discord.Client({
     intents: [
@@ -139,7 +145,7 @@ client.on("messageCreate", async (message) => {
         const userEmbed = defaultEmbed()
             .setTitle("User information")
             .addField("Balance", `${userInfo["balance"].toFixed(2)} BAN`)
-            .addField("Total wagered", `${(userInfo["totalWon"] + userInfo["totalLost"]).toFixed(2)} BAN`)
+            .addField("Total wagered", `${(userInfo["totalWagered"]).toFixed(2)} BAN`)
             .addField("Winnings", `+${userInfo["totalWon"].toFixed(2)} BAN`, true)
             .addField("Losses", `-${userInfo["totalLost"].toFixed(2)} BAN`, true)
             .addField("Net P/L", `${(userInfo["totalWon"] - userInfo["totalLost"]).toFixed(2)} BAN`, false)
@@ -148,7 +154,7 @@ client.on("messageCreate", async (message) => {
     
     if (["leaderboard", "lb", "top"].includes(args[0])) {
         const lbType = args[1];
-        if (!["wagered", "won", "lost", "balance"].includes(lbType)) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [wagered/won/lost]\``);
+        if (!["wagered", "won", "lost", "balance", "event"].includes(lbType)) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [wagered/won/lost]\``);
 
         let dbJSONraw = dbTools.getJSON();
         const lbEmbed = defaultEmbed()
@@ -162,10 +168,17 @@ client.on("messageCreate", async (message) => {
 
         switch (lbType) {
             case "wagered":
-                dbJSON = dbJSON.sort((a, b) => (b["totalWon"] + b["totalLost"]) - (a["totalWon"] + a["totalLost"]));
+                dbJSON = dbJSON.sort((a, b) => (b["totalWagered"]) - (a["totalWagered"]));
                 for (let i = 0; i < (dbJSON.length < 10 ? dbJSON.length : 10); i++) {
                     let fetchedUser = client.users.cache.get(dbJSON[i]["uid"]);
-                    lbEmbed.addField(`${i + 1}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${(dbJSON[i]["totalWon"] + dbJSON[i]["totalLost"]).toFixed(2)} BAN`);
+                    lbEmbed.addField(`${i + 1}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${(dbJSON[i]["totalWagered"]).toFixed(2)} BAN`);
+                }
+                break;
+            case "event":
+                dbJSON = dbJSON.sort((a, b) => (b["weeklyWagered"]) - (a["weeklyWagered"]));
+                for (let i = 0; i < (dbJSON.length < 10 ? dbJSON.length : 10); i++) {
+                    let fetchedUser = client.users.cache.get(dbJSON[i]["uid"]);
+                    lbEmbed.addField(`${i + 1}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${(dbJSON[i]["weeklyWagered"]).toFixed(2)} BAN`);
                 }
                 break;
             case "balance":
@@ -314,6 +327,7 @@ client.on("messageCreate", async (message) => {
         if (betOn == "h") betOn = "heads";
         if (betOn == "t") betOn = "tails";
         if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.replyEmbed("You don't have enough Banano to do that.");
+        await dbTools.addWagered(message.author.id, betAmount);
         let ranGen = await generateRandom();
         if (ranGen >= (0.5 * (1+config["house-edge"]))) {
             await dbTools.addWon(message.author.id, betAmount);
@@ -338,6 +352,7 @@ client.on("messageCreate", async (message) => {
         if (betAmount > maxBet) return message.replyEmbed(`Maximum bet: **${maxBet} BAN**`);
         if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.replyEmbed("You don't have enough Banano to do that.");
         await dbTools.addBalance(message.author.id, 0-betAmount);
+        await dbTools.addWagered(message.author.id, betAmount);
         const rouletteResult = await roulette.getOutcome(betOn, betAmount);
         if (rouletteResult["bet"]["win"] && rouletteResult["roll"]["number"] != 0) {
             await dbTools.addWon(message.author.id, parseFloat(rouletteResult["bet"]["payout"]) - betAmount);

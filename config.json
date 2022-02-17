@@ -63,6 +63,7 @@
     },
     "leaderboard-titles": {
         "wagered": "Leaderboard | Total wagered",
+        "event": "Leaderboard | Weekly wagered",
         "won": "Leaderboard | Net profit (P/L)",
         "lost": "Leaderboard | Net loss (P/L)",
         "balance": "Leaderboard | Total balance"
