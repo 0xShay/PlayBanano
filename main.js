@@ -116,7 +116,7 @@ client.on("messageCreate", async (message) => {
     }
 
     if (["balance", "bal", "wallet"].includes(args[0])) {
-        let lookupUser = message.mentions.users.first() || message.author;
+        let lookupUser = config["admin-users"].includes(message.author.id) ? (message.mentions.users.first() || message.author) : message.author;
         if (balanceCooldown.has(lookupUser.id)) return;
         balanceCooldown.add(lookupUser.id);
         const userPublicKey = await bananoUtils.getPublicKey(lookupUser.id);
