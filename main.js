@@ -41,6 +41,7 @@ const generateRandom = async () => {
 let maxBet;
 
 const updateMaxBet = async () => {
+    if (process.env["APP_MODE"] == "TESTING") return maxBet = config["max-bet"];
     let maxBetTemp = 0;
     const housePublicKey = await bananoUtils.getPublicKey(0);
     let houseBalance = await bananoUtils.accountBalance(housePublicKey);
@@ -108,7 +109,8 @@ client.on("messageCreate", async (message) => {
             ].join(`\n`))
             .addField("Casino", [
                 `\`${config["prefix"]}coinflip [amount] [heads/tails]\` - Bet [amount] BAN on a coinflip's outcome`,
-                `\`${config["prefix"]}roulette [amount] [odd/even/low/high/red/black/#]\` - Bet [amount] BAN on a roulette's outcome`
+                `\`${config["prefix"]}roulette [amount] [odd/even/low/high/red/black/#]\` - Bet [amount] BAN on a roulette's outcome`,
+                `\`${config["prefix"]}blackjack [amount]\` - Start a game of blackjack`
             ].join(`\n`))
         ]});
     }
@@ -249,6 +251,7 @@ client.on("messageCreate", async (message) => {
     }
 
     if (["deposit"].includes(args[0])) {
+        if (process.env["APP_MODE"] == "TESTING") return message.replyEmbed("Bot is in \`TESTING\` mode");
         const userPublicKey = await bananoUtils.getPublicKey(message.author.id);
         QRCode.toDataURL(userPublicKey, function (err, url) {
             const depositEmbed = defaultEmbed()
@@ -365,7 +368,107 @@ client.on("messageCreate", async (message) => {
     }
     
     if (["blackjack", "bj"].includes(args[0])) {
-        return message.replyEmbed("This command is currently disabled.");
+        if (maxBet < config["min-bet"]) return message.replyEmbed(`Betting is currently disabled.`);
+        let betAmount = parseFloat(args[1]);
+        if (!betAmount) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [amount]\``);
+        betAmount = Math.floor(betAmount * 1e2) / 1e2;
+        if (betAmount < config["min-bet"]) return message.replyEmbed(`Minimum bet: **${config["min-bet"]} BAN**`);
+        if (betAmount > maxBet) return message.replyEmbed(`Maximum bet: **${maxBet} BAN**`);
+        if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.replyEmbed("You don't have enough Banano to do that.");
+        await dbTools.addBalance(message.author.id, 0-betAmount);
+        await dbTools.addWagered(message.author.id, betAmount);
+        
+        let game = blackjack.startGame();
+        let gameMsg = await message.reply({ embeds: [ defaultEmbed().setDescription({
+            "ONGOING": `React with a 👊 to hit or a 🛑 to stand.`,
+            "PLAYER_WIN": `You won **${betAmount.toFixed(2)} BAN**!`,
+            "DEALER_WIN": `You lost **${betAmount.toFixed(2)} BAN**...`,
+            "PUSH": `You drew and got back your money.`
+        }[game.result]).addField("Dealer", [
+            `${game.dealer.hand.map(c => config["card-emojis"]["ranks"][["spades", "clubs"].includes(c[1]) ? "black" : "red"][c[0]]).join("")}`,
+            `${game.dealer.hand.map(c => config["card-emojis"]["suits"][c[1]]).join("")} = ${game.dealer.value}`,
+        ].join(`\n`)).addField("Player", [
+            `${game.player.hand.map(c => config["card-emojis"]["ranks"][["spades", "clubs"].includes(c[1]) ? "black" : "red"][c[0]]).join("")}`,
+            `${game.player.hand.map(c => config["card-emojis"]["suits"][c[1]]).join("")} = ${game.player.value}`,
+        ].join(`\n`)).setColor({
+            "ONGOING": config["embed-color"],
+            "PLAYER_WIN": config["embed-color-win"],
+            "DEALER_WIN": config["embed-color-loss"],
+            "PUSH": config["embed-color-draw"]
+        }[game.result]) ] });
+        
+        function awaitNextTurn() {
+
+            gameMsg.awaitReactions({
+                filter: (reaction, user) => (user.id == message.author.id) && (["👊", "🛑"].includes(reaction.emoji.name)),
+                max: 1,
+                time: 60000
+            }).then(async (collected) => {
+
+                if (collected.first().emoji.name == "👊") { game = blackjack.hit(game); }
+                else { game = blackjack.stand(game); };
+
+                try { await collected.first().users.remove(message.author.id); } catch(err) { console.error(err); };
+
+                gameMsg.edit({ embeds: [ defaultEmbed().setDescription({
+                    "ONGOING": `React with a 👊 to hit or a 🛑 to stand.`,
+                    "PLAYER_WIN": `You won **${betAmount.toFixed(2)} BAN**!`,
+                    "DEALER_WIN": `You lost **${betAmount.toFixed(2)} BAN**...`,
+                    "PUSH": `You drew and got back your money.`
+                }[game.result]).addField("Dealer", [
+                    `${game.dealer.hand.map(c => config["card-emojis"]["ranks"][["spades", "clubs"].includes(c[1]) ? "black" : "red"][c[0]]).join("")}`,
+                    `${game.dealer.hand.map(c => config["card-emojis"]["suits"][c[1]]).join("")} = ${game.dealer.value}`,
+                ].join(`\n`)).addField("Player", [
+                    `${game.player.hand.map(c => config["card-emojis"]["ranks"][["spades", "clubs"].includes(c[1]) ? "black" : "red"][c[0]]).join("")}`,
+                    `${game.player.hand.map(c => config["card-emojis"]["suits"][c[1]]).join("")} = ${game.player.value}`,
+                ].join(`\n`)).setColor({
+                    "ONGOING": config["embed-color"],
+                    "PLAYER_WIN": config["embed-color-win"],
+                    "DEALER_WIN": config["embed-color-loss"],
+                    "PUSH": config["embed-color-draw"]
+                }[game.result]) ] });
+    
+                if (game.result == "ONGOING") { awaitNextTurn(); } else { endGame(); };
+
+            }).catch((err) => {
+                console.log(err);
+                gameMsg.edit({ embeds: [ defaultEmbed().setDescription("Game expired. Bet lost.").setColor(config["embed-color-loss"]) ] });
+            });
+
+        };
+
+        async function endGame() {
+
+            try { await gameMsg.reactions.removeAll() } catch(err) { console.error(err) };
+
+            switch (game.result) {
+                case "PLAYER_WIN":
+                    dbTools.addWon(message.author.id, betAmount);
+                    dbTools.addBalance(message.author.id, betAmount*2);
+                    break;
+                case "DEALER_WIN":
+                    dbTools.addLost(message.author.id, betAmount);
+                    break;
+                case "PUSH":
+                    dbTools.addBalance(message.author.id, betAmount);
+                    break;
+            };
+
+        };
+
+        if (game.player.value == 21) {
+            endGame();
+        } else {
+            try {
+                await gameMsg.react("👊");
+                await gameMsg.react("🛑");
+                awaitNextTurn();
+            } catch (err) {
+                console.error(err);
+                gameMsg.edit({ embeds: [ defaultEmbed().setDescription("This game is disabled in this server.").setColor(config["embed-color-loss"]) ] });
+            };
+        };
+
     }
     
 })
