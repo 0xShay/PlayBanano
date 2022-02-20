@@ -13,6 +13,7 @@ let commandCooldown = new Set();
 let balanceCooldown = new Set();
 
 let disabled = false;
+let crashHistory = [];
 
 const bananoUtils = require("./utils/bananoUtils.js");
 const blackjack = require("./utils/blackjack.js");
@@ -505,28 +506,40 @@ client.on("messageCreate", async (message) => {
             setTimeout(() => {
                 if (!cashedOut) {
                     displayMultiplier = parseFloat((1.2**i).toFixed(2));
-                    crashMsg.edit({ embeds: [ defaultEmbed().setTitle(`${displayMultiplier.toFixed(2)}x 🚀`).setDescription(`React with 💰 to secure your profits!`).addField(`Profit`, `+${(betAmount * (displayMultiplier - 1)).toFixed(2)} BAN`) ] });
+                    crashMsg.edit({ embeds: [ defaultEmbed().setTitle(`${multiplier.toFixed(2)}x 🚀`).setDescription(`React with 💰 to secure your profits!`).addField(`Profit`, `+${(betAmount * (displayMultiplier - 1)).toFixed(2)} BAN`) ] });
                 };
-            }, i*1000);
+            }, i*1500);
         };
 
         function awaitInput() {
             crashMsg.awaitReactions({
                 filter: (reaction, user) => (user.id == message.author.id) && (["💰"].includes(reaction.emoji.name)),
                 max: 1,
-                time: (Math.ceil(duration) * 1000) - 500
+                time: (Math.ceil(duration) * 1500) - 500
             }).then(async (collected) => {
 
                 if (!collected.first()) {
                     crashMsg.edit({ embeds: [ defaultEmbed().setTitle(`${displayMultiplier.toFixed(2)}x 💥`).addField(`Profit`, `${(-betAmount).toFixed(2)} BAN`).setColor(config["embed-color-loss"]) ] });
                     dbTools.addLost(message.author.id, betAmount);
                     try { await crashMsg.reactions.removeAll() } catch(err) { console.error(err) };
+                    crashHistory.push({
+                        user: message.author.tag,
+                        multiplier: displayMultiplier,
+                        reward: -betAmount,
+                        success: false
+                    });
                 } else {
                     cashedOut = true;
                     crashMsg.edit({ embeds: [ defaultEmbed().setTitle(`${displayMultiplier.toFixed(2)}x 💰`).addField(`Profit`, `+${(Math.floor(betAmount * (displayMultiplier - 1) * 100) / 100).toFixed(2)} BAN`).setColor(config["embed-color-win"]) ] });
                     await dbTools.addBalance(message.author.id, Math.floor(betAmount * displayMultiplier * 100) / 100);
                     await dbTools.addWon(message.author.id, Math.floor(betAmount * (displayMultiplier - 1) * 100) / 100);
                     try { await crashMsg.reactions.removeAll() } catch(err) { console.error(err) };
+                    crashHistory.push({
+                        user: message.author.tag,
+                        multiplier: displayMultiplier,
+                        reward: Math.floor(betAmount * (displayMultiplier - 1) * 100) / 100,
+                        success: true
+                    });
                 };
 
             }).catch(async (err) => {
@@ -543,6 +556,33 @@ client.on("messageCreate", async (message) => {
             console.error(err);
             crashMsg.edit({ embeds: [ defaultEmbed().setDescription("This game is disabled in this server.").setColor(config["embed-color-loss"]) ] });
         };
+
+    }
+
+    if (["crashlist"].includes(args[0])) {
+
+        let listEmbed = defaultEmbed().setTitle("Last 25 crash games:");
+
+        crashHistory = crashHistory.slice(-25);
+
+        let embedDesc = ``;
+        
+        crashHistory.forEach(game => {
+            // embedDesc += `${game.success ? "💰" : "💥"} ${game.multiplier}x `;
+            listEmbed.addField(`${game.success ? "💰" : "💥"} ${game.multiplier}x`, `${(game.reward<0?"":"+") + game.reward} BAN`);
+        });
+
+        listEmbed.setDescription(embedDesc);
+
+        message.reply({ embeds: [ listEmbed ] });
+
+    }
+    
+    if (["faucet", "claim", "free", "daily"].includes(args[0])) {
+
+        message.reply({ embeds: [ defaultEmbed().setThumbnail(`https://i.imgur.com/PoyRAQu.png`).setTitle(`You can claim free BAN every 2 hours at https://bananoplanet.cc/faucet`).setDescription([
+            `You can find an extended list of faucets [here](https://www.reddit.com/r/banano/comments/npc31y/list_of_banano_faucets/)!`
+        ].join(`\n`)) ] });
 
     }
     
