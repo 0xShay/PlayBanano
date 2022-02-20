@@ -524,7 +524,7 @@ client.on("messageCreate", async (message) => {
                     try { await crashMsg.reactions.removeAll() } catch(err) { console.error(err) };
                     crashHistory.push({
                         user: message.author.tag,
-                        multiplier: displayMultiplier,
+                        multiplier: multiplier,
                         reward: -betAmount,
                         success: false
                     });
