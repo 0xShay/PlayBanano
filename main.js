@@ -17,6 +17,7 @@ let disabled = false;
 const bananoUtils = require("./utils/bananoUtils.js");
 const blackjack = require("./utils/blackjack.js");
 const roulette = require("./utils/roulette.js");
+const crash = require("./utils/crash.js");
 const dbTools = require("./utils/dbTools.js");
 
 const db_users = new Database({
@@ -110,7 +111,8 @@ client.on("messageCreate", async (message) => {
             .addField("Casino", [
                 `\`${config["prefix"]}coinflip [amount] [heads/tails]\` - Bet [amount] BAN on a coinflip's outcome`,
                 `\`${config["prefix"]}roulette [amount] [odd/even/low/high/red/black/#]\` - Bet [amount] BAN on a roulette's outcome`,
-                `\`${config["prefix"]}blackjack [amount]\` - Start a game of blackjack`
+                `\`${config["prefix"]}blackjack [amount]\` - Start a game of blackjack`,
+                `\`${config["prefix"]}crash [amount]\` - Start a game of crash, cash out before the rocket explodes!`
             ].join(`\n`))
         ]});
     }
@@ -222,7 +224,7 @@ client.on("messageCreate", async (message) => {
                 .addField("Casino funds", `${BigNumber(houseBalance.balance).div(BigNumber("1e29")).toFixed(2)} BAN`, true)
                 .addField("Minimum bet", `${config["min-bet"].toFixed(2)} BAN`, true)
                 .addField("Maximum bet", `${maxBet.toFixed(2)} BAN`, true)
-                .addField("House edge", `${config["house-edge"] * 100}%`, true)
+                // .addField("House edge", `${config["house-edge"] * 100}%`, true)
         ]});
     }
 
@@ -433,7 +435,7 @@ client.on("messageCreate", async (message) => {
                 if (game.result == "ONGOING") { awaitNextTurn(); } else { endGame(); };
 
             }).catch((err) => {
-                console.log(err);
+                console.error(err);
                 gameMsg.edit({ embeds: [ defaultEmbed().setDescription("Game expired. Bet lost.").setColor(config["embed-color-loss"]) ] });
             });
 
@@ -469,6 +471,71 @@ client.on("messageCreate", async (message) => {
                 console.error(err);
                 gameMsg.edit({ embeds: [ defaultEmbed().setDescription("This game is disabled in this server.").setColor(config["embed-color-loss"]) ] });
             };
+        };
+
+    }
+
+    if (["crash"].includes(args[0])) {
+
+        if (maxBet < config["min-bet"]) return message.replyEmbed(`Betting is currently disabled.`);
+        let betAmount = parseFloat(args[1]);
+        if (!betAmount) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [amount]\``);
+        betAmount = Math.floor(betAmount * 1e2) / 1e2;
+        if (betAmount < config["min-bet"]) return message.replyEmbed(`Minimum bet: **${config["min-bet"]} BAN**`);
+        if (betAmount > maxBet) return message.replyEmbed(`Maximum bet: **${maxBet} BAN**`);
+        if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.replyEmbed("You don't have enough Banano to do that.");
+        await dbTools.addBalance(message.author.id, 0-betAmount);
+        await dbTools.addWagered(message.author.id, betAmount);
+
+        let multiplier = crash.generateMultiplier();
+        let displayMultiplier = 0;
+        let cashedOut = false;
+        // multiplier = 1.2**secs
+        // secs = log(multiplier) / log(1.2)
+        let duration = Math.log(multiplier) / Math.log(1.2);
+        
+        let crashMsg = await message.reply({ embeds: [ defaultEmbed().setTitle(`1.00x 🚀`).setDescription(`React with 💰 to secure your profits!`).addField(`Profit`, `0.00 BAN`) ] });
+        for (let i = 1; i < Math.ceil(duration); i++) {
+            setTimeout(() => {
+                if (!cashedOut) {
+                    displayMultiplier = parseFloat((1.2**i).toFixed(2));
+                    crashMsg.edit({ embeds: [ defaultEmbed().setTitle(`${displayMultiplier.toFixed(2)}x 🚀`).setDescription(`React with 💰 to secure your profits!`).addField(`Profit`, `+${(betAmount * (displayMultiplier - 1)).toFixed(2)} BAN`) ] });
+                };
+            }, i*1500);
+        };
+
+        function awaitInput() {
+            crashMsg.awaitReactions({
+                filter: (reaction, user) => (user.id == message.author.id) && (["💰"].includes(reaction.emoji.name)),
+                max: 1,
+                time: Math.ceil(duration) * 1500
+            }).then(async (collected) => {
+
+                if (!collected.first()) {
+                    crashMsg.edit({ embeds: [ defaultEmbed().setTitle(`${displayMultiplier.toFixed(2)}x 💥`).addField(`Profit`, `${(-betAmount).toFixed(2)} BAN`).setColor(config["embed-color-loss"]) ] });
+                    dbTools.addLost(message.author.id, betAmount);
+                    try { await crashMsg.reactions.removeAll() } catch(err) { console.error(err) };
+                } else {
+                    cashedOut = true;
+                    crashMsg.edit({ embeds: [ defaultEmbed().setTitle(`${displayMultiplier.toFixed(2)}x 💰`).addField(`Profit`, `+${(betAmount * (displayMultiplier - 1)).toFixed(2)} BAN`).setColor(config["embed-color-win"]) ] });
+                    await dbTools.addBalance(message.author.id, betAmount * displayMultiplier);
+                    await dbTools.addWon(message.author.id, betAmount * (displayMultiplier - 1));
+                    try { await crashMsg.reactions.removeAll() } catch(err) { console.error(err) };
+                };
+
+            }).catch(async (err) => {
+                console.error(err);
+                try { await crashMsg.reactions.removeAll() } catch(err) { console.error(err) };
+                crashMsg.edit({ embeds: [ defaultEmbed().setDescription("This game is disabled in this server.").setColor(config["embed-color-loss"]) ] });
+            });
+        };
+
+        try {
+            await crashMsg.react("💰");
+            awaitInput();
+        } catch (err) {
+            console.error(err);
+            crashMsg.edit({ embeds: [ defaultEmbed().setDescription("This game is disabled in this server.").setColor(config["embed-color-loss"]) ] });
         };
 
     }
