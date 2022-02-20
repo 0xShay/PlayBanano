@@ -488,7 +488,7 @@ client.on("messageCreate", async (message) => {
         await dbTools.addWagered(message.author.id, betAmount);
 
         let multiplier = crash.generateMultiplier();
-        let displayMultiplier = 0;
+        let displayMultiplier = 1;
         let cashedOut = false;
         // multiplier = 1.2**secs
         // secs = log(multiplier) / log(1.2)
