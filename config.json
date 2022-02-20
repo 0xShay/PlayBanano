@@ -17,6 +17,7 @@
     "max-bet-percentage": 0.01,
     "min-pay": 0.01,
     "admin-users": ["293405833231073280"],
+    "trusted-users": ["293405833231073280", "713397525226455041", "273150762618454017"],
     "card-emojis": {
         "ranks": {
             "black": {

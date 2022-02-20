@@ -305,9 +305,15 @@ client.on("messageCreate", async (message) => {
         return message.replyEmbed(`Sent **${payAmount.toFixed(2)} BAN** to ${recvUser}`);
     }
     
-    if (["disable", "enable"].includes(args[0])) {
+    if (["disable"].includes(args[0])) {
+        if (!config["trusted-users"].includes(message.author.id)) return message.replyEmbed("You lack permission to do that...");
+        disabled = true;
+        return message.replyEmbed(`Commands are now **${disabled ? "disabled" : "enabled"}**.`);
+    }
+    
+    if (["enable"].includes(args[0])) {
         if (!config["admin-users"].includes(message.author.id)) return message.replyEmbed("You lack permission to do that...");
-        disabled = !disabled;
+        disabled = false;
         return message.replyEmbed(`Commands are now **${disabled ? "disabled" : "enabled"}**.`);
     }
 
@@ -501,14 +507,14 @@ client.on("messageCreate", async (message) => {
                     displayMultiplier = parseFloat((1.2**i).toFixed(2));
                     crashMsg.edit({ embeds: [ defaultEmbed().setTitle(`${displayMultiplier.toFixed(2)}x 🚀`).setDescription(`React with 💰 to secure your profits!`).addField(`Profit`, `+${(betAmount * (displayMultiplier - 1)).toFixed(2)} BAN`) ] });
                 };
-            }, i*1500);
+            }, i*1000);
         };
 
         function awaitInput() {
             crashMsg.awaitReactions({
                 filter: (reaction, user) => (user.id == message.author.id) && (["💰"].includes(reaction.emoji.name)),
                 max: 1,
-                time: Math.ceil(duration) * 1500
+                time: (Math.ceil(duration) * 1000) - 500
             }).then(async (collected) => {
 
                 if (!collected.first()) {
