@@ -506,16 +506,16 @@ client.on("messageCreate", async (message) => {
             setTimeout(() => {
                 if (!cashedOut) {
                     displayMultiplier = parseFloat((1.2**i).toFixed(2));
-                    crashMsg.edit({ embeds: [ defaultEmbed().setTitle(`${multiplier.toFixed(2)}x 🚀`).setDescription(`React with 💰 to secure your profits!`).addField(`Profit`, `+${(betAmount * (displayMultiplier - 1)).toFixed(2)} BAN`) ] });
+                    crashMsg.edit({ embeds: [ defaultEmbed().setTitle(`${displayMultiplier.toFixed(2)}x 🚀`).setDescription(`React with 💰 to secure your profits!`).addField(`Profit`, `+${(betAmount * (displayMultiplier - 1)).toFixed(2)} BAN`) ] });
                 };
-            }, i*2000);
+            }, i*1500);
         };
 
         function awaitInput() {
             crashMsg.awaitReactions({
                 filter: (reaction, user) => (user.id == message.author.id) && (["💰"].includes(reaction.emoji.name)),
                 max: 1,
-                time: (Math.ceil(duration) * 2000) - 100
+                time: (Math.ceil(duration)*1500) - 100
             }).then(async (collected) => {
 
                 if (!collected.first()) {
@@ -559,17 +559,17 @@ client.on("messageCreate", async (message) => {
 
     }
 
-    if (["crashlist"].includes(args[0])) {
+    if (["crashlist", "crashlog"].includes(args[0])) {
 
-        let listEmbed = defaultEmbed().setTitle("Last 25 crash games:");
+        let listEmbed = defaultEmbed().setTitle("Last 21 crash games:");
 
-        crashHistory = crashHistory.slice(-25);
+        crashHistory = crashHistory.slice(-21);
 
         let embedDesc = ``;
         
         crashHistory.forEach(game => {
             // embedDesc += `${game.success ? "💰" : "💥"} ${game.multiplier}x `;
-            listEmbed.addField(`${game.success ? "💰" : "💥"} ${game.multiplier}x`, `${(game.reward<0?"":"+") + game.reward} BAN`);
+            listEmbed.addField(`${game.success ? "💰" : "💥"} ${game.multiplier}x`, `${(game.reward<0?"":"+") + game.reward} BAN`, true);
         });
 
         listEmbed.setDescription(embedDesc);
