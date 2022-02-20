@@ -501,21 +501,21 @@ client.on("messageCreate", async (message) => {
         // secs = log(multiplier) / log(1.2)
         let duration = Math.log(multiplier) / Math.log(1.2);
         
-        let crashMsg = await message.reply({ embeds: [ defaultEmbed().setTitle(`1.00x 🚀`).setDescription(`React with 💰 to secure your profits!`).addField(`Profit`, `0.00 BAN`) ] });
+        let crashMsg = await message.reply({ embeds: [ defaultEmbed().setTitle(`1.00x 🚀`).setDescription(`React with 💰 to secure your profits!`).addField(`Profit`, `-.-- BAN`) ] });
         for (let i = 1; i < Math.ceil(duration); i++) {
             setTimeout(() => {
                 if (!cashedOut) {
                     displayMultiplier = parseFloat((1.2**i).toFixed(2));
                     crashMsg.edit({ embeds: [ defaultEmbed().setTitle(`${multiplier.toFixed(2)}x 🚀`).setDescription(`React with 💰 to secure your profits!`).addField(`Profit`, `+${(betAmount * (displayMultiplier - 1)).toFixed(2)} BAN`) ] });
                 };
-            }, i*1500);
+            }, i*2000);
         };
 
         function awaitInput() {
             crashMsg.awaitReactions({
                 filter: (reaction, user) => (user.id == message.author.id) && (["💰"].includes(reaction.emoji.name)),
                 max: 1,
-                time: (Math.ceil(duration) * 1500) - 500
+                time: (Math.ceil(duration) * 2000) - 100
             }).then(async (collected) => {
 
                 if (!collected.first()) {
