@@ -26,7 +26,14 @@ exports.drawCard = function(gameState, dp) {
     gameState.pickedCards.push(chosenCard);
     gameState[dp].hand.push(chosenCard);
     let cardValue = parseInt(chosenCard[0]) || (chosenCard[0] == `A` ? (gameState[dp].value + 11 > 21 ? 1 : 11) : 10);
-    gameState[dp].value += cardValue;
+    
+    gameState[dp].value = 0;
+    gameState[dp].hand.slice().sort((a, b) => b[0] != "A" ? b[0]-a[0] : -1).forEach(c => {
+        gameState[dp].value += parseInt(c[0]) || (c[0] == `A` ? (gameState[dp].value + 11 > 21 ? 1 : 11) : 10);
+    });
+
+    // gameState[dp].value += cardValue;
+    
     return gameState;
 }
 
