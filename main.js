@@ -519,7 +519,7 @@ client.on("messageCreate", async (message) => {
             }).then(async (collected) => {
 
                 if (!collected.first()) {
-                    crashMsg.edit({ embeds: [ defaultEmbed().setTitle(`${displayMultiplier.toFixed(2)}x 💥`).addField(`Profit`, `${(-betAmount).toFixed(2)} BAN`).setColor(config["embed-color-loss"]) ] });
+                    crashMsg.edit({ embeds: [ defaultEmbed().setTitle(`${multiplier.toFixed(2)}x 💥`).addField(`Profit`, `${(-betAmount).toFixed(2)} BAN`).setColor(config["embed-color-loss"]) ] });
                     dbTools.addLost(message.author.id, betAmount);
                     try { await crashMsg.reactions.removeAll() } catch(err) { console.error(err) };
                     crashHistory.push({
