@@ -517,9 +517,9 @@ client.on("messageCreate", async (message) => {
                     try { await crashMsg.reactions.removeAll() } catch(err) { console.error(err) };
                 } else {
                     cashedOut = true;
-                    crashMsg.edit({ embeds: [ defaultEmbed().setTitle(`${displayMultiplier.toFixed(2)}x 💰`).addField(`Profit`, `+${(betAmount * (displayMultiplier - 1)).toFixed(2)} BAN`).setColor(config["embed-color-win"]) ] });
-                    await dbTools.addBalance(message.author.id, betAmount * displayMultiplier);
-                    await dbTools.addWon(message.author.id, betAmount * (displayMultiplier - 1));
+                    crashMsg.edit({ embeds: [ defaultEmbed().setTitle(`${displayMultiplier.toFixed(2)}x 💰`).addField(`Profit`, `+${(Math.floor(betAmount * (displayMultiplier - 1) * 100) / 100).toFixed(2)} BAN`).setColor(config["embed-color-win"]) ] });
+                    await dbTools.addBalance(message.author.id, Math.floor(betAmount * displayMultiplier * 100) / 100);
+                    await dbTools.addWon(message.author.id, Math.floor(betAmount * (displayMultiplier - 1) * 100) / 100);
                     try { await crashMsg.reactions.removeAll() } catch(err) { console.error(err) };
                 };
 
