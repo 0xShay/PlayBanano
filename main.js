@@ -562,7 +562,7 @@ client.on("messageCreate", async (message) => {
 
     }
 
-    if (["crashlist", "crashlog"].includes(args[0])) {
+    if (["crashlist", "crashlog", "crashstats"].includes(args[0])) {
 
         let listEmbed = defaultEmbed().setTitle("Last 21 crash games:");
 
