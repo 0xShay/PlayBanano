@@ -1,5 +1,6 @@
 require("dotenv").config({ path: ".env" });
 const config = require("./config.json");
+const tagMemory = require("./db/tagMemory.json");
 
 const Database = require("simplest.db");
 const Discord = require("discord.js");
@@ -8,6 +9,7 @@ const axios = require("axios");
 const BigNumber = require("bignumber.js");
 const schedule = require("node-schedule");
 const randomNumber = require("random-number-csprng");
+const fs = require("fs-extra");
 
 let commandCooldown = new Set();
 let balanceCooldown = new Set();
@@ -54,6 +56,10 @@ const updateMaxBet = async () => {
 updateMaxBet();
 setInterval(updateMaxBet, 30000);
 
+setInterval(() => {
+    fs.writeFileSync("./db/tagMemory.json", JSON.stringify(tagMemory));
+}, 60000);
+
 const resetWeekly = schedule.scheduleJob('00 59 23 * * 0', function(){
     dbTools.resetWeekly();
     console.log("Weekly stats reset");
@@ -74,6 +80,8 @@ client.on("ready", () => {
 })
 
 client.on("messageCreate", async (message) => {
+
+    tagMemory[message.author.id] = message.author.tag;
 
     if (disabled && !config["admin-users"].includes(message.author.id)) return;
 
@@ -177,36 +185,31 @@ client.on("messageCreate", async (message) => {
             case "wagered":
                 dbJSON = dbJSON.sort((a, b) => (b["totalWagered"]) - (a["totalWagered"]));
                 for (let i = 0; i < (dbJSON.length < 10 ? dbJSON.length : 10); i++) {
-                    let fetchedUser = client.users.cache.get(dbJSON[i]["uid"]);
-                    lbEmbed.addField(`${i + 1}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${(dbJSON[i]["totalWagered"]).toFixed(2)} BAN`);
+                    lbEmbed.addField(`${i + 1}) ${tagMemory[dbJSON[i]["uid"]] || dbJSON[i]["uid"]}`, `${(dbJSON[i]["totalWagered"]).toFixed(2)} BAN`);
                 }
                 break;
             case "event":
                 dbJSON = dbJSON.sort((a, b) => (b["weeklyWagered"]) - (a["weeklyWagered"]));
                 for (let i = 0; i < (dbJSON.length < 10 ? dbJSON.length : 10); i++) {
-                    let fetchedUser = client.users.cache.get(dbJSON[i]["uid"]);
-                    lbEmbed.addField(`${i + 1}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${(dbJSON[i]["weeklyWagered"]).toFixed(2)} BAN`);
+                    lbEmbed.addField(`${i + 1}) ${tagMemory[dbJSON[i]["uid"]] || dbJSON[i]["uid"]}`, `${(dbJSON[i]["weeklyWagered"]).toFixed(2)} BAN`);
                 }
                 break;
             case "balance":
                 dbJSON = dbJSON.sort((a, b) => b["balance"] - a["balance"]);
                 for (let i = 0; i < (dbJSON.length < 10 ? dbJSON.length : 10); i++) {
-                    let fetchedUser = client.users.cache.get(dbJSON[i]["uid"]);
-                    lbEmbed.addField(`${i + 1}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${dbJSON[i]["balance"].toFixed(2)} BAN`);
+                    lbEmbed.addField(`${i + 1}) ${tagMemory[dbJSON[i]["uid"]] || dbJSON[i]["uid"]}`, `${dbJSON[i]["balance"].toFixed(2)} BAN`);
                 }
                 break;
             case "won":
                 dbJSON = dbJSON.sort((a, b) => (b["totalWon"] - b["totalLost"]) - (a["totalWon"] - a["totalLost"]));
                 for (let i = 0; i < (dbJSON.length < 10 ? dbJSON.length : 10); i++) {
-                    let fetchedUser = client.users.cache.get(dbJSON[i]["uid"]);
-                    lbEmbed.addField(`${i + 1}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${(dbJSON[i]["totalWon"] - dbJSON[i]["totalLost"]).toFixed(2)} BAN`);
+                    lbEmbed.addField(`${i + 1}) ${tagMemory[dbJSON[i]["uid"]] || dbJSON[i]["uid"]}`, `${(dbJSON[i]["totalWon"] - dbJSON[i]["totalLost"]).toFixed(2)} BAN`);
                 }
                 break;
             case "lost":
                 dbJSON = dbJSON.sort((a, b) => (a["totalWon"] - a["totalLost"]) - (b["totalWon"] - b["totalLost"]));
                 for (let i = 0; i < (dbJSON.length < 10 ? dbJSON.length : 10); i++) {
-                    let fetchedUser = client.users.cache.get(dbJSON[i]["uid"]);
-                    lbEmbed.addField(`${dbJSON.length - i}) ${fetchedUser ? fetchedUser.tag : "`" + dbJSON[i]["uid"] + "`"}`, `${(dbJSON[i]["totalWon"] - dbJSON[i]["totalLost"]).toFixed(2)} BAN`);
+                    lbEmbed.addField(`${dbJSON.length - i}) ${tagMemory[dbJSON[i]["uid"]] || dbJSON[i]["uid"]}`, `${(dbJSON[i]["totalWon"] - dbJSON[i]["totalLost"]).toFixed(2)} BAN`);
                 }
                 break;
         }
