@@ -22,10 +22,7 @@ const blackjack = require("./utils/blackjack.js");
 const roulette = require("./utils/roulette.js");
 const crash = require("./utils/crash.js");
 const dbTools = require("./utils/dbTools.js");
-
-const db_users = new Database({
-    path: "./db/users.json"
-});
+const rtpTools = require("./utils/rtpTools.js");
 
 const defaultEmbed = () => {
     return new Discord.MessageEmbed()
@@ -344,10 +341,12 @@ client.on("messageCreate", async (message) => {
         if (betOn == "h") betOn = "heads";
         if (betOn == "t") betOn = "tails";
         if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.replyEmbed("You don't have enough Banano to do that.");
-        await dbTools.addWagered(message.author.id, betAmount);
+        dbTools.addWagered(message.author.id, betAmount);
+        rtpTools.addWagered("Coinflip", betAmount);
         let ranGen = await generateRandom();
         if (ranGen >= (0.5 * (1+config["house-edge"]))) {
             await dbTools.addWon(message.author.id, betAmount);
+            await rtpTools.addWon("Coinflip", betAmount);
             await dbTools.addBalance(message.author.id, betAmount);
             return message.replyEmbed(`The coin landed on ${betOn} - congrats!\n**+${betAmount.toFixed(2)} BAN**`, config["embed-color-win"]);
         } else {
@@ -370,9 +369,11 @@ client.on("messageCreate", async (message) => {
         if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.replyEmbed("You don't have enough Banano to do that.");
         await dbTools.addBalance(message.author.id, 0-betAmount);
         await dbTools.addWagered(message.author.id, betAmount);
+        await rtpTools.addWagered("Roulette", betAmount);
         const rouletteResult = await roulette.getOutcome(betOn, betAmount);
         if (rouletteResult["bet"]["win"] && rouletteResult["roll"]["number"] != 0) {
             await dbTools.addWon(message.author.id, parseFloat(rouletteResult["bet"]["payout"]) - betAmount);
+            await rtpTools.addWon("Roulette", parseFloat(rouletteResult["bet"]["payout"]) - betAmount);
             await dbTools.addBalance(message.author.id, parseFloat(rouletteResult["bet"]["payout"]));
             message.replyEmbed(`The wheel landed on a **:${rouletteResult["roll"]["color"].toLowerCase()}_circle: ${rouletteResult["roll"]["number"]}**\n\nCongrats, you won!\n**+${(parseFloat(rouletteResult["bet"]["payout"]) - betAmount).toFixed(2)} BAN**`, config["embed-color-win"]);
         } else {
@@ -391,6 +392,7 @@ client.on("messageCreate", async (message) => {
         if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.replyEmbed("You don't have enough Banano to do that.");
         await dbTools.addBalance(message.author.id, 0-betAmount);
         await dbTools.addWagered(message.author.id, betAmount);
+        await rtpTools.addWagered("Blackjack", betAmount);
         
         let game = blackjack.startGame();
         let gameMsg = await message.reply({ embeds: [ defaultEmbed().setDescription({
@@ -458,6 +460,7 @@ client.on("messageCreate", async (message) => {
             switch (game.result) {
                 case "PLAYER_WIN":
                     dbTools.addWon(message.author.id, betAmount);
+                    rtpTools.addWon("Blackjack", betAmount);
                     dbTools.addBalance(message.author.id, betAmount*2);
                     break;
                 case "DEALER_WIN":
@@ -465,6 +468,8 @@ client.on("messageCreate", async (message) => {
                     break;
                 case "PUSH":
                     dbTools.addBalance(message.author.id, betAmount);
+                    rtpTools.addWagered("Blackjack", -betAmount);
+                    rtpTools.addWon("Blackjack", betAmount);
                     break;
             };
 
@@ -496,6 +501,7 @@ client.on("messageCreate", async (message) => {
         if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.replyEmbed("You don't have enough Banano to do that.");
         await dbTools.addBalance(message.author.id, 0-betAmount);
         await dbTools.addWagered(message.author.id, betAmount);
+        await rtpTools.addWagered("Crash", betAmount);
 
         let multiplier = crash.generateMultiplier();
         let displayMultiplier = 1;
@@ -536,6 +542,7 @@ client.on("messageCreate", async (message) => {
                     crashMsg.edit({ embeds: [ defaultEmbed().setTitle(`${displayMultiplier.toFixed(2)}x 💰`).addField(`Profit`, `+${(Math.floor(betAmount * (displayMultiplier - 1) * 100) / 100).toFixed(2)} BAN`).setColor(config["embed-color-win"]) ] });
                     await dbTools.addBalance(message.author.id, Math.floor(betAmount * displayMultiplier * 100) / 100);
                     await dbTools.addWon(message.author.id, Math.floor(betAmount * (displayMultiplier - 1) * 100) / 100);
+                    await rtpTools.addWon("Crash", betAmount + Math.floor(betAmount * (displayMultiplier - 1) * 100) / 100);
                     try { await crashMsg.reactions.removeAll() } catch(err) { console.error(err) };
                     crashHistory.push({
                         user: message.author.tag,
@@ -586,6 +593,19 @@ client.on("messageCreate", async (message) => {
         message.reply({ embeds: [ defaultEmbed().setThumbnail(`https://i.imgur.com/PoyRAQu.png`).setTitle(`You can claim free BAN every 2 hours at https://bananoplanet.cc/faucet`).setDescription([
             `You can find an extended list of faucets [here](https://www.reddit.com/r/banano/comments/npc31y/list_of_banano_faucets/)!`
         ].join(`\n`)) ] });
+
+    }
+    
+    if (["rtp"].includes(args[0])) {
+
+        let rtpStats = rtpTools.getJSON();
+        let statsEmbed = defaultEmbed();
+
+        Object.keys(rtpStats).forEach(game => {
+            statsEmbed.addField(game, `${((rtpStats[game]["totalWon"] / rtpStats[game]["totalWagered"]) * 100).toFixed(2)}%`);
+        });
+
+        message.reply({ embeds: [ statsEmbed ] });
 
     }
     
