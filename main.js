@@ -346,7 +346,7 @@ client.on("messageCreate", async (message) => {
         let ranGen = await generateRandom();
         if (ranGen >= (0.5 * (1+config["house-edge"]))) {
             await dbTools.addWon(message.author.id, betAmount);
-            await rtpTools.addWon("Coinflip", betAmount);
+            await rtpTools.addWon("Coinflip", betAmount*2);
             await dbTools.addBalance(message.author.id, betAmount);
             return message.replyEmbed(`The coin landed on ${betOn} - congrats!\n**+${betAmount.toFixed(2)} BAN**`, config["embed-color-win"]);
         } else {
@@ -373,7 +373,7 @@ client.on("messageCreate", async (message) => {
         const rouletteResult = await roulette.getOutcome(betOn, betAmount);
         if (rouletteResult["bet"]["win"] && rouletteResult["roll"]["number"] != 0) {
             await dbTools.addWon(message.author.id, parseFloat(rouletteResult["bet"]["payout"]) - betAmount);
-            await rtpTools.addWon("Roulette", parseFloat(rouletteResult["bet"]["payout"]) - betAmount);
+            await rtpTools.addWon("Roulette", parseFloat(rouletteResult["bet"]["payout"]));
             await dbTools.addBalance(message.author.id, parseFloat(rouletteResult["bet"]["payout"]));
             message.replyEmbed(`The wheel landed on a **:${rouletteResult["roll"]["color"].toLowerCase()}_circle: ${rouletteResult["roll"]["number"]}**\n\nCongrats, you won!\n**+${(parseFloat(rouletteResult["bet"]["payout"]) - betAmount).toFixed(2)} BAN**`, config["embed-color-win"]);
         } else {
@@ -460,7 +460,7 @@ client.on("messageCreate", async (message) => {
             switch (game.result) {
                 case "PLAYER_WIN":
                     dbTools.addWon(message.author.id, betAmount);
-                    rtpTools.addWon("Blackjack", betAmount);
+                    rtpTools.addWon("Blackjack", betAmount*2);
                     dbTools.addBalance(message.author.id, betAmount*2);
                     break;
                 case "DEALER_WIN":
@@ -469,7 +469,6 @@ client.on("messageCreate", async (message) => {
                 case "PUSH":
                     dbTools.addBalance(message.author.id, betAmount);
                     rtpTools.addWagered("Blackjack", -betAmount);
-                    rtpTools.addWon("Blackjack", betAmount);
                     break;
             };
 
