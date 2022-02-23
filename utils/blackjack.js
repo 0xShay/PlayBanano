@@ -1,5 +1,6 @@
-const Discord = require(`discord.js`);
-const config = require(`../config.json`);
+const Random = require("crypto-random");
+const Discord = require("discord.js");
+const config = require("../config.json");
 
 let cardNumbers = [`A`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `10`, `J`, `Q`, `K`];
 let cardSuits = [`hearts`, `spades`, `diamonds`, `clubs`];
@@ -10,7 +11,8 @@ cardSuits.forEach(suit => {
 });
 
 exports.pickCard = function() {
-    return standardDeck[Math.floor(Math.random() * standardDeck.length)];
+    return standardDeck[Random.range(0, standardDeck.length-1)]
+    // return standardDeck[Math.floor(Math.random() * standardDeck.length)];
 }
 
 exports.pickCardExclusive = function(pickedCards) {

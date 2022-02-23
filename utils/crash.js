@@ -1,7 +1,10 @@
+const Random = require("crypto-random");
 const config = require("../config.json");
 
 exports.generateMultiplier = function() {
-    i = parseFloat(Math.random().toFixed(3));
+    let ret = Random.range(0, 1000);
+    i = ret / 1000;
+    // i = parseFloat(Math.random().toFixed(3));
     while (i == 1) {
         i = parseFloat(Math.random().toFixed(3));
     };

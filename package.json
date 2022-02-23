@@ -13,12 +13,12 @@
     "axios": "^0.25.0",
     "bananojs": "github:0xShay/bananojs",
     "bignumber.js": "^9.0.2",
+    "crypto-random": "^1.0.3",
     "discord.js": "^13.6.0",
     "dotenv": "^14.2.0",
     "fs-extra": "^10.0.0",
     "node-schedule": "^2.1.0",
     "qrcode": "^1.5.0",
-    "random-number-csprng": "^1.0.2",
     "simplest.db": "^1.0.1-2",
     "timers": "^0.1.1"
   },

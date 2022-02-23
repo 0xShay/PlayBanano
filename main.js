@@ -8,7 +8,7 @@ const QRCode = require("qrcode");
 const axios = require("axios");
 const BigNumber = require("bignumber.js");
 const schedule = require("node-schedule");
-const randomNumber = require("random-number-csprng");
+const Random = require("crypto-random");
 const fs = require("fs-extra");
 
 let commandCooldown = new Set();
@@ -35,7 +35,7 @@ const defaultEmbed = () => {
 };
 
 const generateRandom = async () => {
-    let ret = await randomNumber(0, 100000);
+    let ret = Random.range(0, 100000);
     return ret / 100000;
 };
 

@@ -1,5 +1,4 @@
-const randomNumber = require("random-number-csprng");
-const BigNumber = require("bignumber.js");
+const Random = require("crypto-random");
 const config = require("../config.json");
 
 exports.betTypes = {
@@ -21,7 +20,7 @@ exports.betMultipliers = {
 }
 
 exports.rollRoulette = () => {
-    return randomNumber(0, 36);
+    return Random.range(0, 36);
 }
 
 exports.getColor = (num) => {
