@@ -149,7 +149,12 @@ client.on("messageCreate", async (message) => {
         setTimeout(() => {
             balanceCooldown.delete(lookupUser.id);
         }, 5000);
-        return message.reply({ embeds: [ defaultEmbed().setDescription(`${lookupUser.id == message.author.id ? "You have" : lookupUser + " has"} **${(Math.floor(dbTools.getUserInfo(lookupUser.id)["balance"] * 1e2) / 1e2).toFixed(2)} BAN**`) ] });
+        let balanceEmbed = defaultEmbed().setDescription(`${lookupUser.id == message.author.id ? "You have" : lookupUser + " has"} **${(Math.floor(dbTools.getUserInfo(lookupUser.id)["balance"] * 1e2) / 1e2).toFixed(2)} BAN**`);
+        if (dbTools.getUserInfo(lookupUser.id)["balance"] < 1) balanceEmbed.setFooter({
+            text: `Running low on Banano? Run "${config.prefix}faucet"`,
+            iconURL: "https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/160/apple/118/money-bag_1f4b0.png"
+        });
+        return message.reply({ embeds: [ balanceEmbed ] });
     }
 
     if (["stats", "info", "statistics", "lookup", "user"].includes(args[0])) {
