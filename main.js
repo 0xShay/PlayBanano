@@ -106,6 +106,7 @@ client.on("messageCreate", async (message) => {
             defaultEmbed().setTitle("Commands list")
             .addField("General", [
                 `\`${config["prefix"]}balance\` - Check your balance`,
+                `\`${config["prefix"]}faucet\` - Claim some free $BAN!`,
                 `\`${config["prefix"]}deposit\` - Get your deposit address`,
                 `\`${config["prefix"]}withdraw [amount] [address]\` - Withdraw [amount] to [address]`,
                 `\`${config["prefix"]}send [amount] [@user]\` - Send [amount] BAN to [@user]`,
@@ -596,6 +597,26 @@ client.on("messageCreate", async (message) => {
 
         message.reply({ embeds: [ defaultEmbed().setThumbnail(`https://i.imgur.com/PoyRAQu.png`).setTitle(`You can claim free BAN every 2 hours at https://bananoplanet.cc/faucet`).setDescription([
             `You can find an extended list of faucets [here](https://www.reddit.com/r/banano/comments/npc31y/list_of_banano_faucets/)!`
+        ].join(`\n`)) ] });
+
+    }
+    
+    if (["invite", "botinfo", "botstats"].includes(args[0])) {
+
+        let uptime = {};
+        uptime.totalSeconds = (client.uptime / 1000);
+        uptime.days = Math.floor(uptime.totalSeconds / 86400);
+        uptime.totalSeconds %= 86400;
+        uptime.hours = Math.floor(uptime.totalSeconds / 3600);
+        uptime.totalSeconds %= 3600;
+        uptime.minutes = Math.floor(uptime.totalSeconds / 60);
+        uptime.seconds = Math.floor(uptime.totalSeconds % 60);
+
+        message.reply({ embeds: [ defaultEmbed().setThumbnail(config["embed-footer-icon"]).setTitle(`PlayBanano | Bot Information`).setDescription([
+            `Click [here](https://discord.com/oauth2/authorize?client_id=719211180325077002&scope=bot) to invite the PlayBanano bot to your Discord server!`,
+            ``,
+            `Currently in **${client.guilds.cache.size} servers**`,
+            `**Uptime:** ${uptime.days > 0 ? uptime.days + "d, " : ""}${uptime.hours > 0 ? uptime.hours + "h, " : ""}${uptime.minutes > 0 ? uptime.minutes + "m, " : ""}${uptime.seconds > 0 ? uptime.seconds + "s" : ""}`
         ].join(`\n`)) ] });
 
     }
