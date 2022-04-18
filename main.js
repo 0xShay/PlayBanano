@@ -114,6 +114,7 @@ client.on("messageCreate", async (message) => {
                 `\`${config["prefix"]}stats\` - Check your gambling stats`,
                 `\`${config["prefix"]}leaderboard [wagered/won/lost]\` - Check user leaderboards`,
                 `\`${config["prefix"]}house\` - Check casino information`,
+                `\`${config["prefix"]}invite\` - Invite the bot to your server!`,
             ].join(`\n`))
             .addField("Casino", [
                 `\`${config["prefix"]}coinflip [amount] [heads/tails]\` - Bet [amount] BAN on a coinflip's outcome`,
