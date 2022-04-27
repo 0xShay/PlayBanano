@@ -597,7 +597,8 @@ client.on("messageCreate", async (message) => {
     if (["faucet", "claim", "free", "daily"].includes(args[0])) {
 
         message.reply({ embeds: [ defaultEmbed().setThumbnail(`https://i.imgur.com/PoyRAQu.png`).setTitle(`You can claim free BAN every 2 hours at https://bananoplanet.cc/faucet`).setDescription([
-            `You can find an interactive list of faucets with countdowns [here](https://www.banbucket.ninja/#/earn)!`
+            `You can find an interactive list of faucets with countdowns [here](https://www.banbucket.ninja/#/earn)!`,
+            `(use \`${config.prefix}deposit\` to view your BAN address)`
         ].join(`\n`)) ] });
 
     }
