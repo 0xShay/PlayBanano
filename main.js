@@ -137,14 +137,18 @@ client.on("messageCreate", async (message) => {
                 accountBalance = await bananoUtils.accountBalance(userPublicKey);
                 console.log(accountBalance);
                 if (accountBalance["balance"] != '0') {
-                    await bananoUtils.sendBanID(0, accountBalance.balance, lookupUser.id);
-                    await dbTools.addBalance(lookupUser.id, Math.floor(BigNumber(accountBalance.balance).div(BigNumber("1e29")).toNumber() * 1e2) / 1e2);
                     try {
-                        await bananoUtils.receivePending(0);
+                        await bananoUtils.sendBanID(0, accountBalance.balance, lookupUser.id);
+                        await dbTools.addBalance(lookupUser.id, Math.floor(BigNumber(accountBalance.balance).div(BigNumber("1e29")).toNumber() * 1e2) / 1e2);
+                        try {
+                            await bananoUtils.receivePending(0);
+                        } catch(err) {
+                            console.error(err);
+                        };
+                        console.log(`Added ${(Math.floor(BigNumber(accountBalance.pending).plus(BigNumber(accountBalance.balance)).div(BigNumber("1e29")).toNumber() * 1e2) / 1e2).toFixed(2)} BAN to ${lookupUser.id}`);    
                     } catch(err) {
                         console.error(err);
                     };
-                    console.log(`Added ${(Math.floor(BigNumber(accountBalance.pending).plus(BigNumber(accountBalance.balance)).div(BigNumber("1e29")).toNumber() * 1e2) / 1e2).toFixed(2)} BAN to ${lookupUser.id}`);    
                 };
             };
         };
