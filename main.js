@@ -296,7 +296,7 @@ client.on("messageCreate", async (message) => {
         if (BigNumber(payAmount).times(BigNumber("1e29")).isGreaterThan(houseBalance.balance)) return message.replyEmbed("An error occured. Try again later.");
         await dbTools.addBalance(message.author.id, 0-payAmount);
         let txHash = await bananoUtils.sendBan(withdrawAddress, BigNumber(payAmount).times(BigNumber("1e29")).toNumber());
-        return message.replyEmbed(`Withdrawn **${payAmount.toFixed(2)} BAN** to ${withdrawAddress}\n\n\`${txHash}\`\nhttps://creeper.banano.cc/explorer/block/${txHash}`);
+        return message.replyEmbed(`Withdrawn **${payAmount.toFixed(2)} BAN** to ${withdrawAddress}\n\n\`${txHash}\`\nhttps://yellowspyglass.com/hash/${txHash}`);
     }
 
     if (["add"].includes(args[0])) {
