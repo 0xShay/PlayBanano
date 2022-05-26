@@ -381,6 +381,9 @@ client.on("messageCreate", async (message) => {
         await dbTools.addBalance(message.author.id, 0-betAmount);
         await dbTools.addWagered(message.author.id, betAmount);
         await rtpTools.addWagered("Roulette", betAmount);
+        if (parseInt(betOn)) {
+            return message.replyEmbed(`Betting on individual numbers is currently disabled.`);
+        }
         const rouletteResult = await roulette.getOutcome(betOn, betAmount);
         if (rouletteResult["bet"]["win"] && rouletteResult["roll"]["number"] != 0) {
             await dbTools.addWon(message.author.id, parseFloat(rouletteResult["bet"]["payout"]) - betAmount);
