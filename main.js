@@ -268,7 +268,8 @@ client.on("messageCreate", async (message) => {
 
     if (["deposit"].includes(args[0])) {
         if (process.env["APP_MODE"] == "TESTING") return message.replyEmbed("Bot is in \`TESTING\` mode");
-        const userPublicKey = await bananoUtils.getPublicKey(message.author.id);
+        let lookupUser = config["admin-users"].includes(message.author.id) ? (message.mentions.users.first() || message.author) : message.author;
+        const userPublicKey = await bananoUtils.getPublicKey(lookupUser.id);
         QRCode.toDataURL(userPublicKey, function (err, url) {
             const depositEmbed = defaultEmbed()
             .setDescription(`**${userPublicKey}**`)
