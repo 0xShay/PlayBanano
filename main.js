@@ -92,6 +92,10 @@ client.on("messageCreate", async (message) => {
     if (!message.content.toLowerCase().startsWith(config["prefix"])) return;
     const args = message.content.toLowerCase().substring(config["prefix"].length).split(" ");
 
+    for (i = 0; i < args.length; i++) {
+        if (args[i] == "max") args[i] = maxBet.toFixed(2);
+    };
+
     if (commandCooldown.has(message.author.id)) {
         return;
     } else {
