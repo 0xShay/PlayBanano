@@ -244,7 +244,7 @@ client.on("messageCreate", async (message) => {
         ]});
     }
 
-    if (["send"].includes(args[0])) {
+    if (["send", "tip"].includes(args[0])) {
         let payAmount = parseFloat(args[1]);
         let recvUser;
         if (message.type === "REPLY") {
