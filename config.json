@@ -62,6 +62,7 @@
             "bottom": "<:blankbackbot:714565093798576455>"
         }
     },
+    "guess-multipliers": [10, 5, 3, 2, 1],
     "leaderboard-titles": {
         "wagered": "Leaderboard | Total wagered",
         "event": "Leaderboard | Weekly wagered",

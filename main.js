@@ -124,7 +124,8 @@ client.on("messageCreate", async (message) => {
                 `\`${config["prefix"]}coinflip [amount] [heads/tails]\` - Bet [amount] BAN on a coinflip's outcome`,
                 `\`${config["prefix"]}roulette [amount] [odd/even/low/high/red/black/#]\` - Bet [amount] BAN on a roulette's outcome`,
                 `\`${config["prefix"]}blackjack [amount]\` - Start a game of blackjack`,
-                `\`${config["prefix"]}crash [amount]\` - Start a game of crash, cash out before the rocket explodes!`
+                `\`${config["prefix"]}crash [amount]\` - Start a game of crash, cash out before the rocket explodes!`,
+                `\`${config["prefix"]}guess [amount]\` - You have 5 attempts to guess the target number. Rewards: [ ${config["guess-multipliers"].map(m => `${m}x`).join(", ")} ]`
             ].join(`\n`))
         ]});
     }
@@ -603,6 +604,67 @@ client.on("messageCreate", async (message) => {
         listEmbed.setDescription(embedDesc);
 
         message.reply({ embeds: [ listEmbed ] });
+
+    }
+
+    if (["guess"].includes(args[0])) {
+
+        if (maxBet < config["min-bet"]) return message.replyEmbed(`Betting is currently disabled.`);
+        let betAmount = parseFloat(args[1]);
+        if (!betAmount) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [amount]\``);
+        betAmount = Math.floor(betAmount * 1e2) / 1e2;
+        if (betAmount < config["min-bet"]) return message.replyEmbed(`Minimum bet: **${config["min-bet"]} BAN**`);
+        if (betAmount > maxBet) return message.replyEmbed(`Maximum bet: **${maxBet} BAN**`);
+        if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.replyEmbed("You don't have enough Banano to do that.");
+        await dbTools.addBalance(message.author.id, 0-betAmount);
+        await dbTools.addWagered(message.author.id, betAmount);
+        await rtpTools.addWagered("Guess", betAmount);
+        let target = Math.ceil((await generateRandom()) * 100);
+        console.log(target);
+
+        let guessMsg = await message.reply({ embeds: [ defaultEmbed().setTitle(`Guess a number`).setDescription(`Guess a number from 1-100`) ] });
+        let betCount = 0;
+
+        function awaitInput() {
+            message.channel.awaitMessages({
+                filter: (msg) => (msg.author.id == message.author.id) && parseInt(msg.content) && parseInt(msg.content) >= 1 && parseInt(msg.content) <= 100,
+                max: 1,
+                time: 60000
+            }).then(async (collected) => {
+
+                if (!collected.first()) {
+                    guessMsg.edit({ embeds: [ defaultEmbed().setTitle(`Game expired`).addField(`Profit`, `${(-betAmount).toFixed(2)} BAN`).setColor(config["embed-color-loss"]) ] });
+                    dbTools.addLost(message.author.id, betAmount);
+                } else {
+                    if (parseInt(collected.first().content) == target) {
+                        await dbTools.addBalance(message.author.id, Math.floor(betAmount * config["guess-multipliers"][betCount] * 100) / 100);
+                        await dbTools.addWon(message.author.id, Math.floor(betAmount * (config["guess-multipliers"][betCount] - 1) * 100) / 100);
+                        await rtpTools.addWon("Guess", betAmount + Math.floor(betAmount * (config["guess-multipliers"][betCount] - 1) * 100) / 100);
+                        collected.first().reply({ embeds: [ defaultEmbed().setTitle(`(${betCount + 1} / ${config["guess-multipliers"].length}) You guessed it!`).setDescription(`The number was ${target}!`).addField(`Profit`, `${(Math.floor(betAmount * (config["guess-multipliers"][betCount] - 1) * 100) / 100).toFixed(2)} BAN (${config["guess-multipliers"][betCount]}x)`).setColor(config["embed-color-win"]) ] });
+                    } else {
+                        betCount += 1
+                        if (betCount >= config["guess-multipliers"].length) {
+                            await dbTools.addLost(message.author.id, betAmount);
+                            await collected.first().reply({ embeds: [ defaultEmbed().setTitle(`(${betCount} / ${config["guess-multipliers"].length}) - you failed... The number was ${target}!`).setDescription(`-${betAmount.toFixed(2)} BAN`).setColor(config["embed-color-loss"]) ] });
+                        } else {
+                            if (parseInt(collected.first().content) > target) {
+                                await collected.first().reply({ embeds: [ defaultEmbed().setTitle(`(${betCount} / ${config["guess-multipliers"].length}) - the target number is below ${parseInt(collected.first().content)}`).setDescription(`**Multiplier:** ${config["guess-multipliers"][betCount]}x`) ] });
+                            } else {
+                                await collected.first().reply({ embeds: [ defaultEmbed().setTitle(`(${betCount} / ${config["guess-multipliers"].length}) - the target number is above ${parseInt(collected.first().content)}`).setDescription(`**Multiplier:** ${config["guess-multipliers"][betCount]}x`) ] });
+                            }
+                            awaitInput();
+                        }
+                    }
+                };
+
+            }).catch(async (err) => {
+                console.error(err);
+                try { await guessMsg.reactions.removeAll() } catch(err) { console.error(err) };
+                guessMsg.edit({ embeds: [ defaultEmbed().setDescription("This game is disabled in this server.").setColor(config["embed-color-loss"]) ] });
+            });
+        };
+
+        awaitInput();
 
     }
     
