@@ -208,6 +208,7 @@ client.on("messageCreate", async (message) => {
                 }
                 break;
             case "balance":
+                if (!config["admin-users"].includes(message.author.id)) break;
                 dbJSON = dbJSON.sort((a, b) => b["balance"] - a["balance"]);
                 for (let i = 0; i < (dbJSON.length < 10 ? dbJSON.length : 10); i++) {
                     lbEmbed.addField(`${i + 1}) ${tagMemory[dbJSON[i]["uid"]] || dbJSON[i]["uid"]}`, `${dbJSON[i]["balance"].toFixed(2)} BAN`);
@@ -620,7 +621,6 @@ client.on("messageCreate", async (message) => {
         await dbTools.addWagered(message.author.id, betAmount);
         await rtpTools.addWagered("Guess", betAmount);
         let target = Math.ceil((await generateRandom()) * 100);
-        console.log(target);
 
         let guessMsg = await message.reply({ embeds: [ defaultEmbed().setTitle(`Guess a number`).setDescription(`Guess a number from 1-100`) ] });
         let betCount = 0;
