@@ -32,12 +32,21 @@ exports.transferBalance = function(sid, rid, value) {
     return this.getUserInfo(rid);
 }
 
-exports.totalBalance = function(uid) {
+exports.totalBalance = function() {
     let totalBalance = 0;
     Object.values(JSON.parse(db.toJSON())).forEach(u => {
         totalBalance += (u.balance || 0);
     });
     return totalBalance;
+}
+
+exports.houseBalance = function() {
+    let houseBalance = 0;
+    Object.values(JSON.parse(db.toJSON())).forEach(u => {
+        houseBalance += (u.totalLost || 0);
+        houseBalance -= (u.totalWon || 0);
+    });
+    return houseBalance;
 }
 
 exports.addWon = function(uid, value) {
@@ -62,7 +71,7 @@ exports.addWagered = function(uid, value) {
     return this.getUserInfo(uid);
 }
 
-exports.getJSON = function(uid, value) {
+exports.getJSON = function() {
     return JSON.parse(db.toJSON());
 }
 

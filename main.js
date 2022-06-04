@@ -235,14 +235,27 @@ client.on("messageCreate", async (message) => {
         const housePublicKey = await bananoUtils.getPublicKey(0);
         let houseBalance = await bananoUtils.accountBalance(housePublicKey);
         let dbTotalBalance = dbTools.totalBalance();
+        let dbHouseBalance = dbTools.houseBalance();
         return message.reply({ embeds: [
             defaultEmbed()
                 .addField("Total user funds", `${dbTotalBalance.toFixed(2)} BAN`, true)
-                .addField("House balance", `${(BigNumber(houseBalance.balance).div(BigNumber("1e29")) - dbTotalBalance).toFixed(2)} BAN`, true)
-                .addField("Casino funds", `${BigNumber(houseBalance.balance).div(BigNumber("1e29")).toFixed(2)} BAN`, true)
+                .addField("House P/L", `${dbHouseBalance.toFixed(2)} BAN`, true)
                 .addField("Minimum bet", `${config["min-bet"].toFixed(2)} BAN`, true)
                 .addField("Maximum bet", `${maxBet.toFixed(2)} BAN`, true)
-                // .addField("House edge", `${config["house-edge"] * 100}%`, true)
+        ]});
+    }
+    
+    if (["funds"].includes(args[0])) {
+        if (!config["admin-users"].includes(message.author.id)) return message.replyEmbed("You lack permission to do that...");
+        const housePublicKey = await bananoUtils.getPublicKey(0);
+        let houseBalance = await bananoUtils.accountBalance(housePublicKey);
+        let dbTotalBalance = dbTools.totalBalance();
+        let dbHouseBalance = dbTools.houseBalance();
+        return message.reply({ embeds: [
+            defaultEmbed()
+                .addField("Total user funds", `${dbTotalBalance.toFixed(2)} BAN`, true)
+                .addField("Wallet", `${BigNumber(houseBalance.balance).div(BigNumber("1e29")).toFixed(2)} BAN`, true)
+                .addField("House P/L", `${dbHouseBalance.toFixed(2)} BAN`, false)
         ]});
     }
 
