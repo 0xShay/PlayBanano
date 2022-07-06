@@ -398,9 +398,6 @@ client.on("messageCreate", async (message) => {
         if (betAmount < config["min-bet"]) return message.replyEmbed(`Minimum bet: **${config["min-bet"]} BAN**`);
         if (betAmount > maxBet) return message.replyEmbed(`Maximum bet: **${maxBet} BAN**`);
         if (dbTools.getUserInfo(message.author.id)["balance"] < betAmount) return message.replyEmbed("You don't have enough Banano to do that.");
-        if (parseInt(betOn)) {
-            return message.replyEmbed(`Betting on individual numbers is currently disabled.`);
-        };
         await dbTools.addBalance(message.author.id, 0-betAmount);
         await dbTools.addWagered(message.author.id, betAmount);
         await rtpTools.addWagered("Roulette", betAmount);

@@ -13,7 +13,7 @@
     "qr-code-dark": "#FBDD11",
     "qr-code-light": "#212124",
     "min-bet": 0.01,
-    "max-bet": 100,
+    "max-bet": 500,
     "max-bet-percentage": 0.005,
     "min-pay": 0.01,
     "admin-users": ["293405833231073280"],
