@@ -414,6 +414,9 @@ client.on("messageCreate", async (message) => {
     }
     
     if (["blackjack", "bj"].includes(args[0])) {
+
+        return message.replyEmbed(`Blackjack has been disabled due to the limitations of the Discord API. Sorry!`);
+
         if (maxBet < config["min-bet"]) return message.replyEmbed(`Betting is currently disabled.`);
         let betAmount = parseFloat(args[1]);
         if (!betAmount) return message.replyEmbed(`Command syntax: \`${config["prefix"]}${args[0]} [amount]\``);
@@ -521,6 +524,8 @@ client.on("messageCreate", async (message) => {
     }
 
     if (["crash"].includes(args[0])) {
+
+        return message.replyEmbed(`Crash has been disabled due to the limitations of the Discord API. Sorry!`);
 
         if (maxBet < config["min-bet"]) return message.replyEmbed(`Betting is currently disabled.`);
         let betAmount = parseFloat(args[1]);

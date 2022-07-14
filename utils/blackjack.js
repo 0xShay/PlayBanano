@@ -17,7 +17,7 @@ exports.pickCard = function() {
 
 exports.pickCardExclusive = function(pickedCards) {
     let chosenCard = undefined;
-    while (chosenCard == undefined || pickedCards.includes(chosenCard)) {
+    while (chosenCard == undefined || pickedCards.filter(c => c == chosenCard).length < 4) {
         chosenCard = this.pickCard();
     }
     return chosenCard;
