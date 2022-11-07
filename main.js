@@ -361,7 +361,52 @@ client.on("messageCreate", async (message) => {
         message.replyEmbed(`**${payAmount.toFixed(2)} BAN** moved from \`${senderID} => ${recvID}\``);
     }
 
+    if (["invite", "botinfo", "botstats"].includes(args[0])) {
+
+        let uptime = {};
+        uptime.totalSeconds = (client.uptime / 1000);
+        uptime.days = Math.floor(uptime.totalSeconds / 86400);
+        uptime.totalSeconds %= 86400;
+        uptime.hours = Math.floor(uptime.totalSeconds / 3600);
+        uptime.totalSeconds %= 3600;
+        uptime.minutes = Math.floor(uptime.totalSeconds / 60);
+        uptime.seconds = Math.floor(uptime.totalSeconds % 60);
+
+        message.reply({ embeds: [ defaultEmbed().setThumbnail(config["embed-footer-icon"]).setTitle(`PlayBanano | Bot Information`).setDescription([
+            `Click [here](https://discord.com/oauth2/authorize?client_id=719211180325077002&scope=bot) to invite the PlayBanano bot to your Discord server!`,
+            ``,
+            `Currently in **${client.guilds.cache.size} servers**`,
+            `**Uptime:** ${uptime.days > 0 ? uptime.days + "d, " : ""}${uptime.hours > 0 ? uptime.hours + "h, " : ""}${uptime.minutes > 0 ? uptime.minutes + "m, " : ""}${uptime.seconds > 0 ? uptime.seconds + "s" : ""}`
+        ].join(`\n`)) ] });
+
+    }
+    
+    if (["rtp"].includes(args[0])) {
+
+        let rtpStats = rtpTools.getJSON();
+        let statsEmbed = defaultEmbed();
+
+        Object.keys(rtpStats).forEach(game => {
+            statsEmbed.addField(game, `${((rtpStats[game]["totalWon"] / rtpStats[game]["totalWagered"]) * 100).toFixed(2)}%`);
+        });
+
+        message.reply({ embeds: [ statsEmbed ] });
+
+    }
+
+    if (["faucet", "claim", "free", "daily"].includes(args[0])) {
+
+        message.reply({ embeds: [ defaultEmbed().setThumbnail(`https://i.imgur.com/PoyRAQu.png`).setTitle(`You can claim free BAN every 2 hours at https://bananoplanet.cc/faucet`).setDescription([
+            `You can find an interactive list of faucets with countdowns [here](https://www.banbucket.ninja/#/earn)!`,
+            `(use \`${config.prefix}deposit\` to view your BAN address)`
+        ].join(`\n`)) ] });
+
+    }
+
+    // GAMBLING COMMANDS
+
     if (["coinflip", "cf", "coin", "flip"].includes(args[0])) {
+        return message.replyEmbed(`Betting is currently disabled. Join the [BananoPlanet Discord server](https://bananoplanet.cc/discord) for more information.`);
         if (maxBet < config["min-bet"]) return message.replyEmbed(`Betting is currently disabled.`);
         let betAmount = parseFloat(args[1]);
         let betOn = ["heads", "tails", "h", "t"].includes(args[2]) ? args[2] : false;
@@ -388,6 +433,7 @@ client.on("messageCreate", async (message) => {
     }
 
     if (["roulette", "roul", "r"].includes(args[0])) {
+        return message.replyEmbed(`Betting is currently disabled. Join the [BananoPlanet Discord server](https://bananoplanet.cc/discord) for more information.`);
         if (maxBet < config["min-bet"]) return message.replyEmbed(`Betting is currently disabled.`);
         let betAmount = parseFloat(args[1]);
         let betOn = false;
@@ -414,6 +460,7 @@ client.on("messageCreate", async (message) => {
     }
     
     if (["blackjack", "bj"].includes(args[0])) {
+        return message.replyEmbed(`Betting is currently disabled. Join the [BananoPlanet Discord server](https://bananoplanet.cc/discord) for more information.`);
 
         return message.replyEmbed(`Blackjack has been disabled due to the limitations of the Discord API. Sorry!`);
 
@@ -524,6 +571,7 @@ client.on("messageCreate", async (message) => {
     }
 
     if (["crash"].includes(args[0])) {
+        return message.replyEmbed(`Betting is currently disabled. Join the [BananoPlanet Discord server](https://bananoplanet.cc/discord) for more information.`);
 
         return message.replyEmbed(`Crash has been disabled due to the limitations of the Discord API. Sorry!`);
 
@@ -605,6 +653,7 @@ client.on("messageCreate", async (message) => {
     }
 
     if (["crashlist", "crashlog", "crashstats"].includes(args[0])) {
+        return message.replyEmbed(`Betting is currently disabled. Join the [BananoPlanet Discord server](https://bananoplanet.cc/discord) for more information.`);
 
         let listEmbed = defaultEmbed().setTitle("Last 21 crash games:");
 
@@ -624,6 +673,7 @@ client.on("messageCreate", async (message) => {
     }
 
     if (["guess"].includes(args[0])) {
+        return message.replyEmbed(`Betting is currently disabled. Join the [BananoPlanet Discord server](https://bananoplanet.cc/discord) for more information.`);
 
         if (maxBet < config["min-bet"]) return message.replyEmbed(`Betting is currently disabled.`);
         let betAmount = parseFloat(args[1]);
@@ -680,48 +730,6 @@ client.on("messageCreate", async (message) => {
         };
 
         awaitInput();
-
-    }
-    
-    if (["faucet", "claim", "free", "daily"].includes(args[0])) {
-
-        message.reply({ embeds: [ defaultEmbed().setThumbnail(`https://i.imgur.com/PoyRAQu.png`).setTitle(`You can claim free BAN every 2 hours at https://bananoplanet.cc/faucet`).setDescription([
-            `You can find an interactive list of faucets with countdowns [here](https://www.banbucket.ninja/#/earn)!`,
-            `(use \`${config.prefix}deposit\` to view your BAN address)`
-        ].join(`\n`)) ] });
-
-    }
-    
-    if (["invite", "botinfo", "botstats"].includes(args[0])) {
-
-        let uptime = {};
-        uptime.totalSeconds = (client.uptime / 1000);
-        uptime.days = Math.floor(uptime.totalSeconds / 86400);
-        uptime.totalSeconds %= 86400;
-        uptime.hours = Math.floor(uptime.totalSeconds / 3600);
-        uptime.totalSeconds %= 3600;
-        uptime.minutes = Math.floor(uptime.totalSeconds / 60);
-        uptime.seconds = Math.floor(uptime.totalSeconds % 60);
-
-        message.reply({ embeds: [ defaultEmbed().setThumbnail(config["embed-footer-icon"]).setTitle(`PlayBanano | Bot Information`).setDescription([
-            `Click [here](https://discord.com/oauth2/authorize?client_id=719211180325077002&scope=bot) to invite the PlayBanano bot to your Discord server!`,
-            ``,
-            `Currently in **${client.guilds.cache.size} servers**`,
-            `**Uptime:** ${uptime.days > 0 ? uptime.days + "d, " : ""}${uptime.hours > 0 ? uptime.hours + "h, " : ""}${uptime.minutes > 0 ? uptime.minutes + "m, " : ""}${uptime.seconds > 0 ? uptime.seconds + "s" : ""}`
-        ].join(`\n`)) ] });
-
-    }
-    
-    if (["rtp"].includes(args[0])) {
-
-        let rtpStats = rtpTools.getJSON();
-        let statsEmbed = defaultEmbed();
-
-        Object.keys(rtpStats).forEach(game => {
-            statsEmbed.addField(game, `${((rtpStats[game]["totalWon"] / rtpStats[game]["totalWagered"]) * 100).toFixed(2)}%`);
-        });
-
-        message.reply({ embeds: [ statsEmbed ] });
 
     }
     
