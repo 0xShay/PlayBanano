@@ -406,7 +406,7 @@ client.on("messageCreate", async (message) => {
     // GAMBLING COMMANDS
 
     if (["coinflip", "cf", "coin", "flip"].includes(args[0])) {
-        return message.replyEmbed(`Betting is currently disabled. Join the [BananoPlanet Discord server](https://bananoplanet.cc/discord) for more information.`);
+        return message.replyEmbed(`Betting is currently disabled.\n\nJoin the [BananoPlanet Discord server](https://bananoplanet.cc/discord) for more information.`);
         if (maxBet < config["min-bet"]) return message.replyEmbed(`Betting is currently disabled.`);
         let betAmount = parseFloat(args[1]);
         let betOn = ["heads", "tails", "h", "t"].includes(args[2]) ? args[2] : false;
@@ -433,7 +433,7 @@ client.on("messageCreate", async (message) => {
     }
 
     if (["roulette", "roul", "r"].includes(args[0])) {
-        return message.replyEmbed(`Betting is currently disabled. Join the [BananoPlanet Discord server](https://bananoplanet.cc/discord) for more information.`);
+        return message.replyEmbed(`Betting is currently disabled.\n\nJoin the [BananoPlanet Discord server](https://bananoplanet.cc/discord) for more information.`);
         if (maxBet < config["min-bet"]) return message.replyEmbed(`Betting is currently disabled.`);
         let betAmount = parseFloat(args[1]);
         let betOn = false;
@@ -460,7 +460,7 @@ client.on("messageCreate", async (message) => {
     }
     
     if (["blackjack", "bj"].includes(args[0])) {
-        return message.replyEmbed(`Betting is currently disabled. Join the [BananoPlanet Discord server](https://bananoplanet.cc/discord) for more information.`);
+        return message.replyEmbed(`Betting is currently disabled.\n\nJoin the [BananoPlanet Discord server](https://bananoplanet.cc/discord) for more information.`);
 
         return message.replyEmbed(`Blackjack has been disabled due to the limitations of the Discord API. Sorry!`);
 
@@ -571,7 +571,7 @@ client.on("messageCreate", async (message) => {
     }
 
     if (["crash"].includes(args[0])) {
-        return message.replyEmbed(`Betting is currently disabled. Join the [BananoPlanet Discord server](https://bananoplanet.cc/discord) for more information.`);
+        return message.replyEmbed(`Betting is currently disabled.\n\nJoin the [BananoPlanet Discord server](https://bananoplanet.cc/discord) for more information.`);
 
         return message.replyEmbed(`Crash has been disabled due to the limitations of the Discord API. Sorry!`);
 
@@ -653,7 +653,7 @@ client.on("messageCreate", async (message) => {
     }
 
     if (["crashlist", "crashlog", "crashstats"].includes(args[0])) {
-        return message.replyEmbed(`Betting is currently disabled. Join the [BananoPlanet Discord server](https://bananoplanet.cc/discord) for more information.`);
+        return message.replyEmbed(`Betting is currently disabled.\n\nJoin the [BananoPlanet Discord server](https://bananoplanet.cc/discord) for more information.`);
 
         let listEmbed = defaultEmbed().setTitle("Last 21 crash games:");
 
@@ -673,7 +673,7 @@ client.on("messageCreate", async (message) => {
     }
 
     if (["guess"].includes(args[0])) {
-        return message.replyEmbed(`Betting is currently disabled. Join the [BananoPlanet Discord server](https://bananoplanet.cc/discord) for more information.`);
+        return message.replyEmbed(`Betting is currently disabled.\n\nJoin the [BananoPlanet Discord server](https://bananoplanet.cc/discord) for more information.`);
 
         if (maxBet < config["min-bet"]) return message.replyEmbed(`Betting is currently disabled.`);
         let betAmount = parseFloat(args[1]);
